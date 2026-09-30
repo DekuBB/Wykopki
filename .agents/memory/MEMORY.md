@@ -1,0 +1,1 @@
+- [Security and commerce boundaries](security-commerce.md) — fail closed on secrets; keep webhook, balance, coupon, and payment-state boundaries explicit.

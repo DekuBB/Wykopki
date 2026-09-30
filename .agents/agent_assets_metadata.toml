@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Nlcd7awL0Ml8iaXzSpz1P"
+uri = "file://PROMPT.md"
+type = "text"
+title = "GuaKamole Shop Bot — Kompletny Prompt Projektu"
+logical_id = "75cca9e4-3b43-4481-9936-89bac91b4116"

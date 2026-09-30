@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/telegram-mini-app/"
+title = "Telegram Shop"
+description = "Customer-facing Telegram Mini App for browsing active products, selecting a city and district, viewing the account balance, and placing orders from verified Telegram WebApp sessions."
+version = "1.0.0"
+id = "artifacts/telegram-mini-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/telegram-mini-app/" ]
+localPort = 19791
+
+[services.development]
+run = "pnpm --filter @workspace/telegram-mini-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/telegram-mini-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/telegram-mini-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19791"
+BASE_PATH = "/telegram-mini-app/"

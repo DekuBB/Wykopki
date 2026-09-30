@@ -1,0 +1,952 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification for Telegram Shop Bot Admin Panel
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: users
+    description: Bot users management
+  - name: cities
+    description: Cities management
+  - name: products
+    description: Products management
+  - name: districts
+    description: Districts management
+  - name: orders
+    description: Orders management
+  - name: settings
+    description: Bot settings
+  - name: stats
+    description: Dashboard statistics
+  - name: telegram
+    description: Telegram webhook
+  - name: telegram-mini-app
+    description: Customer-facing Telegram Mini App
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all bot users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BotUser"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a single user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotUser"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}/balance:
+    patch:
+      operationId: updateUserBalance
+      tags: [users]
+      summary: Update user balance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBalanceBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotUser"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cities:
+    get:
+      operationId: listCities
+      tags: [cities]
+      summary: List all cities
+      responses:
+        "200":
+          description: List of cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/City"
+    post:
+      operationId: createCity
+      tags: [cities]
+      summary: Create a city
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCityBody"
+      responses:
+        "201":
+          description: Created city
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/City"
+
+  /cities/{id}:
+    put:
+      operationId: updateCity
+      tags: [cities]
+      summary: Update a city
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCityBody"
+      responses:
+        "200":
+          description: Updated city
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/City"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCity
+      tags: [cities]
+      summary: Delete a city
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /districts:
+    get:
+      operationId: listDistricts
+      tags: [districts]
+      summary: List all districts
+      responses:
+        "200":
+          description: List of districts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/District"
+    post:
+      operationId: createDistrict
+      tags: [districts]
+      summary: Create a district
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDistrictBody"
+      responses:
+        "201":
+          description: Created district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/District"
+
+  /districts/{id}:
+    put:
+      operationId: updateDistrict
+      tags: [districts]
+      summary: Update a district
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDistrictBody"
+      responses:
+        "200":
+          description: Updated district
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/District"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDistrict
+      tags: [districts]
+      summary: Delete a district
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List all orders
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get bot settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSettings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update bot settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSettings"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /telegram/webhook:
+    post:
+      operationId: handleTelegramWebhook
+      tags: [telegram]
+      summary: Handle Telegram webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /telegram/app/session:
+    post:
+      operationId: createTelegramMiniAppSession
+      tags: [telegram-mini-app]
+      summary: Validate Telegram WebApp init data and create a customer session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramMiniAppSessionInput"
+      responses:
+        "200":
+          description: Validated customer session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramMiniAppSession"
+        "400":
+          description: Invalid Telegram init data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Telegram bot authentication is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /telegram/app/catalog:
+    get:
+      operationId: getTelegramMiniAppCatalog
+      tags: [telegram-mini-app]
+      summary: List active cities, products, and districts for the Mini App
+      security:
+        - TelegramSession: []
+      responses:
+        "200":
+          description: Active catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramMiniAppCatalog"
+        "401":
+          description: Telegram customer session required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /telegram/app/account:
+    get:
+      operationId: getTelegramMiniAppAccount
+      tags: [telegram-mini-app]
+      summary: Get the current customer balance and order history
+      security:
+        - TelegramSession: []
+      responses:
+        "200":
+          description: Customer account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramMiniAppAccount"
+        "401":
+          description: Telegram customer session required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /telegram/app/orders:
+    post:
+      operationId: createTelegramMiniAppOrder
+      tags: [telegram-mini-app]
+      summary: Place an order using the customer's internal balance
+      security:
+        - TelegramSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramMiniAppOrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Product or district is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Telegram customer session required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Insufficient balance or concurrent purchase conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    BotUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        telegramId:
+          type: string
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        balance:
+          type: number
+        discountPercent:
+          type: number
+        bonuses:
+          type: number
+        purchaseCount:
+          type: integer
+        referralCode:
+          type: string
+        referredById:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - telegramId
+        - username
+        - firstName
+        - balance
+        - discountPercent
+        - bonuses
+        - purchaseCount
+        - referralCode
+        - referredById
+        - createdAt
+
+    UpdateUserBalanceBody:
+      type: object
+      properties:
+        balance:
+          type: number
+      required:
+        - balance
+
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - emoji
+        - imageUrl
+        - isActive
+        - createdAt
+
+    CreateCityBody:
+      type: object
+      properties:
+        name:
+          type: string
+        emoji:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+      required:
+        - name
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        cityId:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: ["string", "null"]
+        pricePln:
+          type: number
+        weightGrams:
+          type: ["number", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - cityId
+        - name
+        - emoji
+        - pricePln
+        - weightGrams
+        - isActive
+        - createdAt
+
+    CreateProductBody:
+      type: object
+      properties:
+        cityId:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: ["string", "null"]
+        pricePln:
+          type: number
+        weightGrams:
+          type: ["number", "null"]
+        isActive:
+          type: boolean
+      required:
+        - cityId
+        - name
+        - pricePln
+
+    District:
+      type: object
+      properties:
+        id:
+          type: integer
+        cityId:
+          type: integer
+        name:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - cityId
+        - name
+        - isActive
+        - createdAt
+
+    CreateDistrictBody:
+      type: object
+      properties:
+        cityId:
+          type: integer
+        name:
+          type: string
+        isActive:
+          type: boolean
+      required:
+        - cityId
+        - name
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        telegramId:
+          type: string
+        cityId:
+          type: integer
+        cityName:
+          type: string
+        productId:
+          type: integer
+        productName:
+          type: string
+        districtId:
+          type: integer
+        districtName:
+          type: string
+        amountPln:
+          type: number
+        paymentMethod:
+          type: string
+        paymentStatus:
+          type: string
+        paidAt:
+          type: ["string", "null"]
+        status:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - telegramId
+        - cityId
+        - cityName
+        - productId
+        - productName
+        - districtId
+        - districtName
+        - amountPln
+        - paymentMethod
+        - paymentStatus
+        - paidAt
+        - status
+        - createdAt
+
+    BotSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        botToken:
+          type: ["string", "null"]
+        adminTelegramId:
+          type: ["string", "null"]
+        welcomeMessage:
+          type: ["string", "null"]
+        operatorUsername:
+          type: ["string", "null"]
+        rulesText:
+          type: ["string", "null"]
+        webhookUrl:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required:
+        - id
+        - botToken
+        - adminTelegramId
+        - welcomeMessage
+        - operatorUsername
+        - rulesText
+        - webhookUrl
+        - updatedAt
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        botToken:
+          type: ["string", "null"]
+        adminTelegramId:
+          type: ["string", "null"]
+        welcomeMessage:
+          type: ["string", "null"]
+        operatorUsername:
+          type: ["string", "null"]
+        rulesText:
+          type: ["string", "null"]
+        webhookUrl:
+          type: ["string", "null"]
+
+    DashboardStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalOrders:
+          type: integer
+        totalRevenuePln:
+          type: number
+        activeUsers:
+          type: integer
+        todayOrders:
+          type: integer
+        todayRevenuePln:
+          type: number
+        topCities:
+          type: array
+          items:
+            $ref: "#/components/schemas/CityOrderCount"
+        recentOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+      required:
+        - totalUsers
+        - totalOrders
+        - totalRevenuePln
+        - activeUsers
+        - todayOrders
+        - todayRevenuePln
+        - topCities
+        - recentOrders
+
+    TelegramMiniAppSessionInput:
+      type: object
+      properties:
+        initData:
+          type: string
+          minLength: 1
+      required:
+        - initData
+
+    TelegramMiniAppSession:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/BotUser"
+        initDataValidated:
+          type: boolean
+      required:
+        - user
+        - initDataValidated
+
+    TelegramMiniAppCatalog:
+      type: object
+      properties:
+        cities:
+          type: array
+          items:
+            $ref: "#/components/schemas/City"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        districts:
+          type: array
+          items:
+            $ref: "#/components/schemas/District"
+      required:
+        - cities
+        - products
+        - districts
+
+    TelegramMiniAppAccount:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/BotUser"
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+      required:
+        - user
+        - orders
+
+    TelegramMiniAppOrderInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        districtId:
+          type: integer
+      required:
+        - productId
+        - districtId
+
+    CityOrderCount:
+      type: object
+      properties:
+        cityId:
+          type: integer
+        cityName:
+          type: string
+        orderCount:
+          type: integer
+      required:
+        - cityId
+        - cityName
+        - orderCount
+
+  securitySchemes:
+    TelegramSession:
+      type: apiKey
+      in: cookie
+      name: telegram_session

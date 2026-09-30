@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hello": "tsx ./src/hello.ts",
+    "seed": "tsx ./src/seed.ts",
+    "test:critical": "tsx --test ../artifacts/api-server/src/lib/commerce.integration.test.ts",
+    "test:security": "tsx --test ./src/security.integration.test.ts",
+    "test:mini-app": "tsx --test ./src/telegram-mini-app.integration.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@workspace/db": "workspace:*",
+    "tsx": "catalog:"
+  }
+}

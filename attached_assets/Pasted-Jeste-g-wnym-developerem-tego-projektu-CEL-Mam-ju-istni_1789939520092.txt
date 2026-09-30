@@ -1,0 +1,585 @@
+Jesteś głównym developerem tego projektu.
+
+CEL:
+Mam już istniejący projekt Telegram Shop / Telegram Web App typu „dead drop”.
+Twoim zadaniem jest doprowadzić GO DO STANU PRODUKCYJNEGO, a nie tworzyć nowy projekt od zera.
+
+Docelowo aplikacja ma działać jak profesjonalny Telegram Shop / marketplace dostępny z poziomu bota Telegram, podobny pod względem sposobu działania do popularnych botów marketplace, np. @Wykopkowy_bot / @xxxareamarket_bot.
+
+WAŻNE:
+NIE USUWAJ obecnego projektu.
+NIE TWÓRZ drugiej aplikacji obok istniejącej.
+NIE PRZEPISUJ CAŁEGO PROJEKTU OD ZERA.
+NIE USUWAJ działających funkcji tylko dlatego, że można je zrobić inaczej.
+
+Najpierw dokładnie przeanalizuj istniejący kod, architekturę i funkcjonalność.
+Dopiero po audycie wykonuj zmiany.
+
+==================================================
+FAZA 0 — AUDYT PROJEKTU
+==================================================
+
+Najpierw przeanalizuj cały projekt.
+
+Sprawdź:
+
+- strukturę katalogów,
+- package.json,
+- używany framework,
+- wersję Node.js,
+- frontend,
+- backend,
+- API,
+- bazę danych,
+- schemat bazy,
+- modele/tabele,
+- autoryzację,
+- integrację Telegram,
+- zmienne środowiskowe,
+- istniejące endpointy,
+- istniejące komponenty UI,
+- routing,
+- koszyk,
+- produkty,
+- zamówienia,
+- użytkowników,
+- płatności,
+- panel administratora,
+- system powiadomień,
+- upload zdjęć,
+- inventory/magazyn,
+- responsywność,
+- zabezpieczenia,
+- obsługę błędów.
+
+Znajdź również:
+
+- TODO,
+- FIXME,
+- niedokończone funkcje,
+- mock data,
+- placeholdery,
+- martwy kod,
+- błędne linki,
+- błędy TypeScript,
+- błędy ESLint,
+- błędy builda,
+- problemy z API,
+- problemy z bazą danych.
+
+NIE ZMIENIAJ JESZCZE KODU.
+
+Na końcu audytu przedstaw mi:
+
+1. Co już działa.
+2. Co działa częściowo.
+3. Czego brakuje.
+4. Co jest zepsute.
+5. Co wymaga przebudowy.
+6. Jakie technologie są obecnie używane.
+7. Jak wygląda obecna architektura.
+8. Jakie są największe ryzyka.
+9. Plan modernizacji.
+
+==================================================
+FAZA 1 — ZASADA „NIE ROZPIERDOL ISTNIEJĄCEGO PROJEKTU”
+==================================================
+
+Przed każdą większą zmianą:
+
+- sprawdź istniejący kod,
+- wykorzystaj istniejące komponenty,
+- wykorzystaj istniejące API,
+- wykorzystaj istniejące modele danych,
+- zachowaj istniejące funkcje,
+- nie twórz duplikatów,
+- nie zmieniaj technologii bez konkretnego powodu.
+
+Jeżeli istniejąca funkcja działa — pozostaw ją działającą.
+
+Jeżeli istniejący kod jest niedoskonały, popraw go możliwie małą zmianą.
+
+Jeżeli przebudowa jest konieczna, najpierw zabezpiecz istniejącą funkcjonalność.
+
+==================================================
+FAZA 2 — ARCHITEKTURA TELEGRAM SHOP
+==================================================
+
+Docelowa aplikacja ma być przede wszystkim MOBILE-FIRST.
+
+Telegram jest głównym środowiskiem użytkownika.
+
+Interfejs powinien działać wygodnie na:
+
+- telefonach,
+- Telegram Web,
+- desktopowym Telegramie.
+
+Zaprojektuj aplikację jako prawdziwy Telegram Web App / Mini App.
+
+Integracja powinna obejmować:
+
+- Telegram WebApp SDK,
+- identyfikację użytkownika Telegram,
+- Telegram user ID,
+- username,
+- first name,
+- last name,
+- avatar/profile information, jeżeli dostępne,
+- bezpieczną walidację danych Telegram po stronie serwera.
+
+NIE ufaj danym przesyłanym wyłącznie przez frontend.
+
+==================================================
+FAZA 3 — GŁÓWNY SKLEP
+==================================================
+
+Stwórz/przebuduj główny ekran sklepu tak, aby użytkownik od razu rozumiał:
+
+- co sprzedaje sklep,
+- jakie produkty są dostępne,
+- jakie są kategorie,
+- jak wyszukać produkt,
+- jak przejść do koszyka,
+- jak sprawdzić swoje zamówienia.
+
+Główny interfejs powinien zawierać:
+
+- header,
+- profil użytkownika Telegram,
+- wyszukiwarkę,
+- kategorie,
+- produkty,
+- ceny,
+- status dostępności,
+- koszyk,
+- zamówienia,
+- menu/nawigację.
+
+Całość ma być nowoczesna, szybka i wygodna.
+
+==================================================
+FAZA 4 — PRODUKTY
+==================================================
+
+Każdy produkt powinien posiadać przynajmniej:
+
+- ID,
+- nazwę,
+- slug,
+- opis,
+- zdjęcie/zdjęcia,
+- cenę,
+- walutę,
+- kategorię,
+- ilość dostępnych sztuk,
+- status aktywności,
+- datę utworzenia,
+- datę aktualizacji.
+
+Jeżeli projekt już posiada podobny model — NIE TWÓRZ DRUGIEGO.
+
+Dostosuj istniejący model.
+
+Produkt powinien mieć stronę/szczegóły:
+
+- zdjęcie,
+- nazwa,
+- opis,
+- cena,
+- dostępność,
+- ilość,
+- przycisk „Dodaj do koszyka”,
+- informacje dodatkowe.
+
+==================================================
+FAZA 5 — KATEGORIE
+==================================================
+
+Dodaj lub popraw system kategorii.
+
+Użytkownik powinien móc:
+
+- przeglądać kategorie,
+- wejść w kategorię,
+- zobaczyć produkty z kategorii,
+- wyszukiwać produkty,
+- filtrować produkty.
+
+Panel administratora powinien umożliwiać:
+
+- tworzenie kategorii,
+- edycję,
+- usuwanie,
+- zmianę kolejności,
+- aktywowanie/dezaktywowanie.
+
+==================================================
+FAZA 6 — KOSZYK
+==================================================
+
+Koszyk musi działać prawidłowo.
+
+Powinien umożliwiać:
+
+- dodanie produktu,
+- zwiększenie ilości,
+- zmniejszenie ilości,
+- usunięcie produktu,
+- wyczyszczenie koszyka,
+- pokazanie sumy,
+- sprawdzenie dostępności przed zamówieniem.
+
+Nie pozwalaj kupić większej liczby produktów niż aktualnie dostępna.
+
+Przed utworzeniem zamówienia ponownie sprawdź stan magazynowy po stronie serwera.
+
+==================================================
+FAZA 7 — ZAMÓWIENIA
+==================================================
+
+Zbuduj kompletny system zamówień.
+
+Zamówienie powinno mieć:
+
+- ID,
+- użytkownika Telegram,
+- produkty,
+- ilości,
+- ceny w momencie zakupu,
+- sumę,
+- status,
+- datę utworzenia,
+- dane potrzebne do realizacji zamówienia.
+
+Statusy mogą obejmować:
+
+PENDING
+PAID
+PROCESSING
+COMPLETED
+CANCELLED
+REFUNDED
+
+Nie zmieniaj nazw istniejących statusów, jeżeli projekt już ma własny poprawny system.
+
+Użytkownik powinien mieć ekran:
+
+„Moje zamówienia”
+
+z historią swoich zamówień.
+
+==================================================
+FAZA 8 — PŁATNOŚCI
+==================================================
+
+Najpierw sprawdź, czy projekt posiada już system płatności.
+
+Jeżeli istnieje:
+
+- zachowaj go,
+- popraw błędy,
+- zabezpiecz webhooki,
+- upewnij się, że status płatności nie może być fałszowany przez klienta.
+
+Jeżeli płatności jeszcze nie istnieją:
+
+zaprojektuj architekturę umożliwiającą ich późniejsze podłączenie.
+
+NIE dodawaj fikcyjnego systemu płatności udającego prawdziwe płatności.
+
+==================================================
+FAZA 9 — PANEL ADMINISTRATORA
+==================================================
+
+Stwórz lub rozbuduj panel administratora.
+
+Administrator powinien mieć możliwość:
+
+- dodawania produktów,
+- edytowania produktów,
+- usuwania/dezaktywowania produktów,
+- ustawiania cen,
+- ustawiania ilości,
+- dodawania zdjęć,
+- zarządzania kategoriami,
+- przeglądania zamówień,
+- zmiany statusów zamówień,
+- przeglądania użytkowników,
+- sprawdzania podstawowych statystyk.
+
+Panel administratora NIE może być dostępny zwykłemu użytkownikowi.
+
+Uprawnienia muszą być sprawdzane po stronie serwera.
+
+==================================================
+FAZA 10 — POWIADOMIENIA TELEGRAM
+==================================================
+
+Jeżeli projekt posiada Telegram Bot API, wykorzystaj istniejącą integrację.
+
+Dodaj powiadomienia dotyczące np.:
+
+- utworzenia zamówienia,
+- potwierdzenia płatności,
+- zmiany statusu,
+- realizacji zamówienia,
+- anulowania zamówienia.
+
+Nie spamuj użytkownika.
+
+Administrator powinien opcjonalnie otrzymywać informacje o nowych zamówieniach.
+
+==================================================
+FAZA 11 — UI / UX
+==================================================
+
+UI ma wyglądać jak profesjonalny Telegram Shop.
+
+PRIORYTET:
+
+mobile-first.
+
+Zadbaj o:
+
+- duże wygodne przyciski,
+- czytelną typografię,
+- odpowiednie odstępy,
+- szybkie ładowanie,
+- skeleton loading,
+- empty states,
+- loading states,
+- error states,
+- animacje tylko tam, gdzie mają sens,
+- responsywność,
+- dark mode, jeżeli pasuje do obecnego projektu.
+
+Nie rób przypadkowego „AI-looking UI”.
+
+Interfejs ma wyglądać jak prawdziwa gotowa aplikacja produkcyjna.
+
+Wykorzystaj istniejący branding projektu, jeśli już istnieje.
+
+==================================================
+FAZA 12 — BEZPIECZEŃSTWO
+==================================================
+
+Przeprowadź dokładny security review.
+
+Sprawdź między innymi:
+
+- authentication,
+- authorization,
+- Telegram initData validation,
+- API routes,
+- SQL injection,
+- XSS,
+- CSRF,
+- rate limiting,
+- walidację danych,
+- upload plików,
+- dostęp administratora,
+- manipulowanie ceną,
+- manipulowanie ilością produktów,
+- manipulowanie ID użytkownika,
+- manipulowanie statusem zamówienia.
+
+Nigdy nie ufaj:
+
+- cenie przesłanej przez frontend,
+- user ID przesłanemu przez frontend,
+- statusowi płatności przesłanemu przez frontend,
+- ilości produktów przesłanej przez frontend.
+
+Cena i dostępność muszą być ustalane po stronie serwera.
+
+==================================================
+FAZA 13 — BAZA DANYCH
+==================================================
+
+Jeżeli używany jest Supabase/PostgreSQL:
+
+sprawdź obecny schema.
+
+Nie twórz tabel będących duplikatami istniejących tabel.
+
+Zadbaj o:
+
+- primary keys,
+- foreign keys,
+- indexes,
+- constraints,
+- timestamps,
+- relacje,
+- integralność danych.
+
+Przeanalizuj również wydajność zapytań.
+
+==================================================
+FAZA 14 — TESTY
+==================================================
+
+Po każdej większej zmianie:
+
+uruchom:
+
+- build,
+- lint,
+- testy,
+- type checking, jeżeli dostępny.
+
+Napraw wszystkie błędy, które sam wprowadziłeś.
+
+Następnie przetestuj główny flow:
+
+START
+↓
+Telegram user
+↓
+Sklep
+↓
+Kategoria
+↓
+Produkt
+↓
+Dodaj do koszyka
+↓
+Koszyk
+↓
+Checkout
+↓
+Utworzenie zamówienia
+↓
+Płatność / status płatności
+↓
+Zamówienie
+↓
+Powiadomienie Telegram
+↓
+Panel administratora
+↓
+Realizacja zamówienia
+
+==================================================
+FAZA 15 — NIE ZATRZYMUJ SIĘ NA MOCKACH
+==================================================
+
+Jeżeli jakaś funkcja ma istnieć w finalnym sklepie:
+
+NIE zostawiaj jej jako:
+
+- TODO,
+- mock,
+- fake API,
+- fake payment,
+- placeholder,
+- „coming soon”.
+
+Jeżeli dana funkcja nie może zostać teraz poprawnie zaimplementowana z powodu braku konkretnego API/sekretu:
+
+zaprojektuj poprawną integrację i jasno oznacz JEDYNIE brakujący element konfiguracyjny.
+
+Nie udawaj, że funkcja działa.
+
+==================================================
+FAZA 16 — WYKORZYSTAJ ZAINSTALOWANE SKILLE
+==================================================
+
+Podczas pracy korzystaj odpowiednio z:
+
+- Frontend Design
+- Ui Ux Pro Max
+- Next Best Practices
+- Supabase Postgres Best Practices
+- Web Design Guidelines
+- Browser Use
+- Audit Website
+
+Jeżeli konkretny skill nie jest potrzebny do danego zadania — nie używaj go na siłę.
+
+==================================================
+FAZA 17 — ZASADA MAŁYCH KROKÓW
+==================================================
+
+Nie wykonuj ogromnej przebudowy jednocześnie.
+
+Pracuj etapami:
+
+1. AUDYT
+2. ARCHITEKTURA
+3. DATABASE
+4. TELEGRAM
+5. PRODUCTS
+6. CATEGORIES
+7. CART
+8. ORDERS
+9. PAYMENTS
+10. ADMIN
+11. UI/UX
+12. SECURITY
+13. TESTS
+14. FINAL AUDIT
+
+Po każdym etapie:
+
+- sprawdź build,
+- sprawdź błędy,
+- sprawdź istniejące funkcje,
+- dopiero potem przejdź dalej.
+
+==================================================
+FAZA 18 — FINALNY AUDYT
+==================================================
+
+Na końcu wykonaj pełny audyt aplikacji.
+
+Sprawdź:
+
+[ ] aplikacja uruchamia się
+[ ] build przechodzi
+[ ] frontend działa
+[ ] backend działa
+[ ] baza działa
+[ ] Telegram działa
+[ ] użytkownik Telegram jest poprawnie rozpoznawany
+[ ] produkty działają
+[ ] kategorie działają
+[ ] wyszukiwarka działa
+[ ] koszyk działa
+[ ] zamówienia działają
+[ ] inventory działa
+[ ] płatności są poprawnie obsługiwane lub prawidłowo przygotowane do integracji
+[ ] panel admina działa
+[ ] uprawnienia działają
+[ ] powiadomienia działają
+[ ] aplikacja jest responsywna
+[ ] nie ma krytycznych błędów bezpieczeństwa
+[ ] nie ma krytycznych błędów TypeScript
+[ ] nie ma błędów builda
+[ ] nie ma oczywistych mocków udających produkcyjne funkcje
+
+Na samym końcu przygotuj raport:
+
+1. CO ZOSTAŁO ZROBIONE
+2. CO ZOSTAŁO POPRAWIONE
+3. CO ZOSTAŁO ZACHOWANE
+4. JAKIE BŁĘDY ZNALEZIONO
+5. JAKIE BŁĘDY NAPRAWIONO
+6. CZEGO JESZCZE BRAKUJE
+7. JAKIE ENV VARIABLES SĄ WYMAGANE
+8. JAK URUCHOMIĆ PROJEKT
+9. JAK PRZETESTOWAĆ SKLEP
+10. CZY PROJEKT JEST GOTOWY DO DEPLOYMENTU
+
+NAJWAŻNIEJSZA ZASADA:
+
+Najpierw poznaj mój istniejący projekt.
+Potem go ulepszaj.
+
+Nie niszcz istniejącej funkcjonalności.
+Nie twórz niepotrzebnej drugiej architektury.
+Nie usuwaj danych.
+Nie zmieniaj technologii bez powodu.
+Nie zostawiaj funkcji jako fałszywych mocków.
+
+Celem końcowym jest działający, profesjonalny, bezpieczny i responsywny Telegram Shop / Telegram Web App, a nie demonstracja UI.
