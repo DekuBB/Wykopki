@@ -219,7 +219,7 @@ created_at TIMESTAMPTZ DEFAULT NOW()
 ## Panel administracyjny — funkcje
 
 ### Logowanie
-- Formularz hasłem (domyślnie: 2906)
+Configure ADMIN_PASSWORD exclusively in Netlify environment variables; never store its value in repository files.
 - JWT httpOnly cookie, ważność 7 dni
 
 ### Dashboard
@@ -322,7 +322,7 @@ created_at TIMESTAMPTZ DEFAULT NOW()
 DATABASE_URL                    # PostgreSQL connection string
 TELEGRAM_BOT_TOKEN              # Token bota z BotFather
 SESSION_SECRET                  # Klucz JWT (losowy string)
-ADMIN_PASSWORD                  # Hasło panelu admina (domyślnie: 2906)
+Configure ADMIN_PASSWORD exclusively in Netlify environment variables; never store its value in repository files.
 DEFAULT_OBJECT_STORAGE_BUCKET_ID # ID bucketa GCS (Replit Object Storage)
 PRIVATE_OBJECT_DIR              # Ścieżka do prywatnego katalogu GCS
 PUBLIC_OBJECT_SEARCH_PATHS      # Ścieżki do publicznych plików GCS
