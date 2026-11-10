@@ -2,7 +2,7 @@
 
 ## Opis projektu
 
-System sklepu "dead drop" oparty na bocie Telegram (@GuaKamole_Shop_bot) z webowym panelem administracyjnym. Kupujący zamawia towar (np. marihuanę) przez bota, płaci kryptowalutą lub BLIKiem, a po akceptacji przez admina otrzymuje współrzędne GPS i zdjęcie fizycznej skrytki (martwa skrytka / dead drop). Panel admina umożliwia zarządzanie całym systemem.
+System sklepu "dead drop" oparty na bocie Telegram (@GuaKamole_Shop_bot) z webowym panelem administracyjnym. Kupujący zamawia towar (np. warzywa, owoce itp,itd.) przez bota, płaci kryptowalutą lub BLIKiem, a po akceptacji przez admina otrzymuje współrzędne GPS i zdjęcie fizycznej skrytki (martwa skrytka / dead drop). Panel admina umożliwia zarządzanie całym systemem.
 
 ---
 
