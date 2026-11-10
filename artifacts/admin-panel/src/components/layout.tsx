@@ -12,11 +12,11 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: Activity },
-    { href: "/users", label: "Users", icon: Users },
-    { href: "/assortment", label: "Assortment", icon: Package },
+    { href: "/users", label: "Użytkownicy", icon: Users },
+    { href: "/assortment", label: "Asortyment", icon: Package },
     { href: "/orders", label: "Zamowienia", icon: ShoppingBag },
     { href: "/tools", label: "Narzedzia", icon: Wrench },
-    { href: "/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/settings", label: "Ustawienia", icon: SettingsIcon },
   ];
 
   const handleLogout = async () => {
@@ -101,14 +101,17 @@ export function Layout({ children }: { children: ReactNode }) {
                  <CheckCircle2 className="w-4 h-4 text-green-500" />
               ) : null}
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
+            <Button variant="ghost" size="icon" aria-label="Wyloguj" className="h-11 w-11" onClick={handleLogout}>
               <LogOut className="w-4 h-4 text-muted-foreground" />
             </Button>
           </div>
         </header>
 
+        <nav aria-label="Nawigacja panelu" className="md:hidden grid grid-cols-3 gap-2 p-3 bg-card border-b border-border">
+          {navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} aria-current={location === href ? "page" : undefined} className={`min-h-12 flex flex-col items-center justify-center gap-1 rounded-md text-xs ${location === href ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}><Icon className="w-5 h-5" />{label}</Link>)}
+        </nav>
         <div className="flex-1 overflow-auto">
-          <div className="p-6 max-w-6xl mx-auto">
+          <div className="p-3 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-w-6xl mx-auto">
             {children}
           </div>
         </div>

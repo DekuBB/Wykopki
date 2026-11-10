@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, productPhotosTable } from "@workspace/db";
+import { db, productPhotosTable, productsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { ObjectStorageService } from "../lib/objectStorage";
 
@@ -9,13 +9,12 @@ const objectStorage = new ObjectStorageService();
 
 const CreatePhotoBody = z.object({
   productId: z.number().int().positive(),
-  objectPath: z.string().min(1),
+  objectPath: z.string().regex(/^\/objects\/[a-f0-9-]{36}\.(jpg|png|webp)$/),
   caption: z.string().optional(),
 });
 
 function serializePhoto(p: typeof productPhotosTable.$inferSelect) {
-  const domain = (process.env.REPLIT_DOMAINS ?? "").split(",")[0]?.trim();
-  const baseUrl = domain ? `https://${domain}` : "";
+  const baseUrl = "";
   return {
     ...p,
     createdAt: p.createdAt.toISOString(),
@@ -43,6 +42,9 @@ router.post("/product-photos", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const [product] = await db.select().from(productsTable).where(eq(productsTable.id, body.data.productId));
+  if (!product) { res.status(404).json({ error: "Produkt nie istnieje" }); return; }
+  await objectStorage.downloadObject(await objectStorage.getObjectEntityFile(body.data.objectPath));
   const [photo] = await db
     .insert(productPhotosTable)
     .values({

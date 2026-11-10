@@ -22,6 +22,9 @@ const settingsSchema = z.object({
   welcomeMessage: z.string().optional(),
   rulesText: z.string().optional(),
   webhookUrl: z.string().optional(),
+  orderConfirmationMessage: z.string().optional(),
+  bonusExchangeRate: z.coerce.number().int().min(1),
+  minPurchaseAmount: z.coerce.number().int().min(0),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -43,6 +46,9 @@ export default function Settings() {
       welcomeMessage: "",
       rulesText: "",
       webhookUrl: "",
+      orderConfirmationMessage: "",
+      bonusExchangeRate: 10,
+      minPurchaseAmount: 0,
     },
   });
 
@@ -55,6 +61,9 @@ export default function Settings() {
         welcomeMessage: settings.welcomeMessage || "",
         rulesText: settings.rulesText || "",
         webhookUrl: settings.webhookUrl || "",
+        orderConfirmationMessage: settings.orderConfirmationMessage || "",
+        bonusExchangeRate: settings.bonusExchangeRate ?? 10,
+        minPurchaseAmount: settings.minPurchaseAmount ?? 0,
       });
     }
   }, [settings, form]);
@@ -132,7 +141,10 @@ export default function Settings() {
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent className="space-y-6">
 
-                <FormField
+                <FormField control={form.control} name="bonusExchangeRate" render={({ field }) => <FormItem><FormLabel>Bonusy za 1 PLN</FormLabel><FormControl><Input type="number" min={1} {...field} /></FormControl><FormMessage /></FormItem>} />
+              <FormField control={form.control} name="minPurchaseAmount" render={({ field }) => <FormItem><FormLabel>Minimalna kwota zakupu (PLN)</FormLabel><FormControl><Input type="number" min={0} {...field} /></FormControl><FormMessage /></FormItem>} />
+              <FormField control={form.control} name="orderConfirmationMessage" render={({ field }) => <FormItem><FormLabel>Potwierdzenie zamówienia</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>} />
+              <FormField
                   control={form.control}
                   name="botToken"
                   render={({ field }) => (

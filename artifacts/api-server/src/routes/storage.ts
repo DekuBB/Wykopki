@@ -1,34 +1,33 @@
-import { Router, type IRouter, type Request, type Response } from "express";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { Readable } from "stream";
-
+import express, { Router, type IRouter } from "express";
+import { imageStore, ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 const router: IRouter = Router();
-const objectStorage = new ObjectStorageService();
-
-router.use("/storage/objects", async (req: Request, res: Response): Promise<void> => {
+const storage = new ObjectStorageService();
+const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+router.put("/storage/upload/:id", express.raw({ type: () => true, limit: "4mb" }), async (req, res) => {
+  const id = String(req.params.id);
+  const extension = extensions[req.get("Content-Type") ?? ""];
+  if (!/^[a-f0-9-]{36}$/.test(id) || !extension || !Buffer.isBuffer(req.body) || !req.body.length) {
+    res.status(400).json({ error: "Wybierz zdjęcie JPG, PNG lub WebP do 4 MB." }); return;
+  }
+  const bytes = req.body as Buffer;
+  const valid = extension === "jpg" ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
+    : extension === "png" ? bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+    : bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP";
+  if (!valid) { res.status(400).json({ error: "Nieprawidłowy format zdjęcia." }); return; }
+  const key = `${id}.${extension}`;
+  await imageStore().set(key, new Uint8Array(bytes).buffer);
+  res.json({ objectPath: `/objects/${key}` });
+});
+router.get("/storage/objects/:key", async (req, res) => {
   try {
-    const tail = req.path.startsWith("/") ? req.path.slice(1) : req.path;
-    const objectPath = `/objects/${tail}`;
-
-    const file = await objectStorage.getObjectEntityFile(objectPath);
-    const webResponse = await objectStorage.downloadObject(file, 0);
-
-    res.setHeader("Content-Type", webResponse.headers.get("Content-Type") ?? "application/octet-stream");
+    const key = await storage.getObjectEntityFile(`/objects/${req.params.key}`);
+    const response = await storage.downloadObject(key);
+    res.setHeader("Content-Type", response.headers.get("Content-Type")!);
     res.setHeader("Cache-Control", "private, no-cache");
-
-    if (webResponse.body) {
-      const nodeStream = Readable.fromWeb(webResponse.body as import("stream/web").ReadableStream);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
-  } catch (err) {
-    if (err instanceof ObjectNotFoundError) {
-      res.status(404).json({ error: "Not found" });
-    } else {
-      res.status(500).json({ error: "Storage error" });
-    }
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.send(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    res.status(error instanceof ObjectNotFoundError ? 404 : 500).json({ error: "Nie można pobrać zdjęcia." });
   }
 });
-
 export default router;

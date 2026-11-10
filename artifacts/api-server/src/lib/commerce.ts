@@ -1,6 +1,7 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import {
   db,
+  settingsTable,
   couponsTable,
   ordersTable,
   usersTable,
@@ -8,6 +9,7 @@ import {
 
 export interface BalanceOrderInput {
   telegramId: string;
+  requestKey?: string;
   cityId: number;
   cityName: string;
   productId: number;
@@ -21,6 +23,15 @@ export async function createBalanceOrder(
   input: BalanceOrderInput,
 ): Promise<{ order: typeof ordersTable.$inferSelect; newBalance: number } | null> {
   return db.transaction(async (tx) => {
+    if (input.requestKey) {
+      const [existing] = await tx.select().from(ordersTable).where(and(eq(ordersTable.requestKey, input.requestKey), eq(ordersTable.telegramId, input.telegramId)));
+      if (existing) {
+        const [user] = await tx.select().from(usersTable).where(eq(usersTable.telegramId, input.telegramId));
+        return { order: existing, newBalance: Number(user.balance) };
+      }
+    }
+    const [settings] = await tx.select().from(settingsTable).limit(1);
+    if (Number(input.amountPln) < (settings?.minPurchaseAmount ?? 0)) return null;
     const [debitedUser] = await tx
       .update(usersTable)
       .set({
@@ -40,6 +51,7 @@ export async function createBalanceOrder(
     const [order] = await tx
       .insert(ordersTable)
       .values({
+        requestKey: input.requestKey ?? null,
         userId: debitedUser.id,
         telegramId: input.telegramId,
         cityId: input.cityId,

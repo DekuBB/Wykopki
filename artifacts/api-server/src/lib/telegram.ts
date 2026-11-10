@@ -1,4 +1,6 @@
 import { logger } from "./logger";
+import { db, settingsTable } from "@workspace/db";
+import { getRequiredSecret } from "./security";
 
 interface TelegramMessage {
   chat_id: string | number;
@@ -17,10 +19,14 @@ interface TelegramEditMessage {
 
 export type InlineButton =
   | { text: string; callback_data: string }
-  | { text: string; url: string };
+  | { text: string; url: string }
+  | { text: string; web_app: { url: string } };
 
 export async function getBotToken(): Promise<string | null> {
-  return process.env.TELEGRAM_BOT_TOKEN ?? null;
+  const token = getRequiredSecret("TELEGRAM_BOT_TOKEN");
+  if (token) return token;
+  const [settings] = await db.select({ botToken: settingsTable.botToken }).from(settingsTable).limit(1);
+  return settings?.botToken ?? null;
 }
 
 export async function telegramApi(
@@ -34,15 +40,17 @@ export async function telegramApi(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
     });
     const data = (await res.json()) as { ok: boolean; description?: string; result?: unknown };
     if (!data.ok) {
-      logger.warn({ method, error: data.description }, "Telegram API error");
+      if (method === "editMessageText" && data.description?.includes("message is not modified")) return data;
+      throw new Error(`Telegram ${method} failed`);
     }
     return data;
   } catch (err) {
-    logger.error({ method, err }, "Telegram API request failed");
-    throw err;
+    logger.error({ method }, "Telegram API request failed");
+    throw new Error(`Telegram ${method} failed`);
   }
 }
 
@@ -112,21 +120,22 @@ export function makeInlineKeyboard(buttons: Array<InlineButton[]>) {
   };
 }
 
-export function mainMenuKeyboard() {
+export function mainMenuKeyboard(admin = false) {
   return makeInlineKeyboard([
+    ...(admin ? [[{ text: "⚙️ Panel administratora", callback_data: "admin:home" }]] : []),
     [{ text: "Konto osobiste", callback_data: "menu:account" }],
-    [{ text: "Doladuj swoje saldo", callback_data: "menu:topup" }],
+    [{ text: "Doładuj swoje saldo", callback_data: "menu:topup" }],
     [{ text: "Kup produkt", callback_data: "menu:buy" }],
-    [{ text: "Opinia", callback_data: "menu:opinion" }],
-    [{ text: "Zasady", url: "https://telegra.ph/GuaKamole-05-15-3" }],
+    [{ text: "★Opinia★", callback_data: "menu:opinion" }],
+    [{ text: "Zasady", url: "https://telegra.ph/XxXLeviaFanXxX-11-10" }],
     [{ text: "Operator", callback_data: "menu:operator" }],
   ]);
 }
 
 export function navButtons(extra?: InlineButton[]): InlineButton[][] {
   const row: InlineButton[] = [
-    { text: "Wstecz", callback_data: "nav:back" },
-    { text: "Dom", callback_data: "nav:home" },
+    { text: "🔙 Wstecz", callback_data: "nav:back" },
+    { text: "🔹 Dom", callback_data: "nav:home" },
   ];
   return extra ? [extra, row] : [row];
 }

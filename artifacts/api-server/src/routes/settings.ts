@@ -1,3 +1,4 @@
+import { siteUrl } from "../lib/siteUrl";
 import { Router, type IRouter } from "express";
 import { db, settingsTable } from "@workspace/db";
 import {
@@ -27,7 +28,8 @@ async function getOrCreateSettings() {
   const [created] = await db
     .insert(settingsTable)
     .values({
-      botToken: process.env.TELEGRAM_BOT_TOKEN ?? null,
+      webhookUrl: `${siteUrl()}/api/telegram/webhook`,
+      adminTelegramId: getRequiredSecret("ADMIN_TELEGRAM_ID"),
     })
     .returning();
   return created;
@@ -45,17 +47,24 @@ router.put("/settings", async (req, res): Promise<void> => {
     return;
   }
 
+  if (body.data.adminTelegramId && !/^\d+$/.test(body.data.adminTelegramId.trim())) {
+    res.status(400).json({ error: "Podaj numeryczny identyfikator konta administratora Telegram." }); return;
+  }
+
   const existing = await getOrCreateSettings();
 
   const [settings] = await db
     .update(settingsTable)
     .set({
-      botToken: body.data.botToken !== undefined ? body.data.botToken : existing.botToken,
+      botToken: body.data.botToken?.trim() ? body.data.botToken.trim() : existing.botToken,
       adminTelegramId: body.data.adminTelegramId !== undefined ? body.data.adminTelegramId : existing.adminTelegramId,
       welcomeMessage: body.data.welcomeMessage !== undefined ? body.data.welcomeMessage : existing.welcomeMessage,
       operatorUsername: body.data.operatorUsername !== undefined ? body.data.operatorUsername : existing.operatorUsername,
       rulesText: body.data.rulesText !== undefined ? body.data.rulesText : existing.rulesText,
       webhookUrl: body.data.webhookUrl !== undefined ? body.data.webhookUrl : existing.webhookUrl,
+      orderConfirmationMessage: body.data.orderConfirmationMessage ?? existing.orderConfirmationMessage,
+      bonusExchangeRate: body.data.bonusExchangeRate ?? existing.bonusExchangeRate,
+      minPurchaseAmount: body.data.minPurchaseAmount ?? existing.minPurchaseAmount,
     })
     .returning();
 

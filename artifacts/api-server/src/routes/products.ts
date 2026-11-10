@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, productsTable } from "@workspace/db";
+import { db, productsTable, citiesTable, categoriesTable } from "@workspace/db";
 import {
   ListProductsResponse,
   CreateProductBody,
@@ -36,10 +36,17 @@ router.post("/products", async (req, res): Promise<void> => {
     return;
   }
 
+  const [city] = await db.select().from(citiesTable).where(eq(citiesTable.id, body.data.cityId));
+  if (!city) { res.status(400).json({ error: "Wybierz istniejące miasto" }); return; }
+  if (body.data.categoryId != null) {
+    const [category] = await db.select().from(categoriesTable).where(eq(categoriesTable.id, body.data.categoryId));
+    if (!category) { res.status(400).json({ error: "Wybierz istniejącą kategorię" }); return; }
+  }
   const [product] = await db
     .insert(productsTable)
     .values({
       cityId: body.data.cityId,
+      categoryId: body.data.categoryId ?? null,
       name: body.data.name,
       emoji: body.data.emoji ?? null,
       pricePln: String(body.data.pricePln),
@@ -64,10 +71,17 @@ router.put("/products/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const [city] = await db.select().from(citiesTable).where(eq(citiesTable.id, body.data.cityId));
+  if (!city) { res.status(400).json({ error: "Wybierz istniejące miasto" }); return; }
+  if (body.data.categoryId != null) {
+    const [category] = await db.select().from(categoriesTable).where(eq(categoriesTable.id, body.data.categoryId));
+    if (!category) { res.status(400).json({ error: "Wybierz istniejącą kategorię" }); return; }
+  }
   const [product] = await db
     .update(productsTable)
     .set({
       cityId: body.data.cityId,
+      categoryId: body.data.categoryId ?? null,
       name: body.data.name,
       emoji: body.data.emoji ?? null,
       pricePln: String(body.data.pricePln),

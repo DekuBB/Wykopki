@@ -5,6 +5,28 @@
  * API specification for Telegram Shop Bot Admin Panel
  * OpenAPI spec version: 0.1.0
  */
+export interface Category {
+  id: number;
+  name: string;
+  /** @nullable */
+  emoji: string | null;
+  isActive: boolean;
+}
+
+export interface CategoryInput {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @maxLength 16
+   * @nullable
+   */
+  emoji?: string | null;
+  isActive?: boolean;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -56,24 +78,36 @@ export interface CreateCityBody {
 
 export interface Product {
   id: number;
+  /** @nullable */
+  categoryId?: number | null;
   cityId: number;
   name: string;
   /** @nullable */
   emoji: string | null;
+  /** @exclusiveMinimum 0 */
   pricePln: number;
-  /** @nullable */
+  /**
+   * @minimum 0
+   * @nullable
+   */
   weightGrams: number | null;
   isActive: boolean;
   createdAt: string;
 }
 
 export interface CreateProductBody {
+  /** @nullable */
+  categoryId?: number | null;
   cityId: number;
   name: string;
   /** @nullable */
   emoji?: string | null;
+  /** @exclusiveMinimum 0 */
   pricePln: number;
-  /** @nullable */
+  /**
+   * @minimum 0
+   * @nullable
+   */
   weightGrams?: number | null;
   isActive?: boolean;
 }
@@ -124,6 +158,12 @@ export interface BotSettings {
   /** @nullable */
   rulesText: string | null;
   /** @nullable */
+  orderConfirmationMessage?: string | null;
+  /** @minimum 1 */
+  bonusExchangeRate?: number;
+  /** @minimum 0 */
+  minPurchaseAmount?: number;
+  /** @nullable */
   webhookUrl: string | null;
   updatedAt: string;
 }
@@ -139,6 +179,12 @@ export interface UpdateSettingsBody {
   operatorUsername?: string | null;
   /** @nullable */
   rulesText?: string | null;
+  /** @nullable */
+  orderConfirmationMessage?: string | null;
+  /** @minimum 1 */
+  bonusExchangeRate?: number;
+  /** @minimum 0 */
+  minPurchaseAmount?: number;
   /** @nullable */
   webhookUrl?: string | null;
 }

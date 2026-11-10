@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, citiesTable } from "@workspace/db";
+import { db, citiesTable, productsTable, districtsTable } from "@workspace/db";
 import {
   ListCitiesResponse,
   CreateCityBody,
@@ -86,6 +86,9 @@ router.delete("/cities/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const [product] = await db.select({ id: productsTable.id }).from(productsTable).where(eq(productsTable.cityId, params.data.id)).limit(1);
+  const [district] = await db.select({ id: districtsTable.id }).from(districtsTable).where(eq(districtsTable.cityId, params.data.id)).limit(1);
+  if (product || district) { res.status(409).json({ error: "Najpierw usuń lub przenieś produkty i dzielnice tego miasta." }); return; }
   await db.delete(citiesTable).where(eq(citiesTable.id, params.data.id));
   res.sendStatus(204);
 });

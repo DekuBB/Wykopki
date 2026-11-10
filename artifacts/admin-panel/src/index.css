@@ -194,3 +194,10 @@
     pointer-events: none;
   }
 }
+@media (max-width: 767px) {
+  button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  input, textarea, select { font-size: 16px; }
+}

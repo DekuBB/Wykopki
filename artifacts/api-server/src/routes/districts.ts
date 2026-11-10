@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, districtsTable } from "@workspace/db";
+import { db, districtsTable, citiesTable } from "@workspace/db";
 import {
   ListDistrictsResponse,
   CreateDistrictBody,
@@ -34,6 +34,8 @@ router.post("/districts", async (req, res): Promise<void> => {
     return;
   }
 
+  const [city] = await db.select().from(citiesTable).where(eq(citiesTable.id, body.data.cityId));
+  if (!city) { res.status(400).json({ error: "Wybierz istniejące miasto" }); return; }
   const [district] = await db
     .insert(districtsTable)
     .values({
@@ -59,6 +61,8 @@ router.put("/districts/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const [city] = await db.select().from(citiesTable).where(eq(citiesTable.id, body.data.cityId));
+  if (!city) { res.status(400).json({ error: "Wybierz istniejące miasto" }); return; }
   const [district] = await db
     .update(districtsTable)
     .set({

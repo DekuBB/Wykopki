@@ -8,6 +8,7 @@ import {
   settingsTable,
   productPhotosTable,
   couponsTable,
+  categoriesTable,
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -24,6 +25,10 @@ import {
 } from "./telegram";
 import { getSession, setSession, resetSession } from "./botSession";
 import { logger } from "./logger";
+import { isTelegramAdmin } from "./adminAccess";
+import { siteUrl } from "./siteUrl";
+function html(value: string) { return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
 import {
   createBalanceOrder,
   exchangeBonusesForBalance,
@@ -92,14 +97,14 @@ async function sendOrEditHome(
   messageId?: number
 ): Promise<number | undefined> {
   const text =
-    `<b>Witam ${user.firstName ?? user.telegramId}</b>\n\n` +
+    `<b>Witam ${html(user.firstName ?? user.telegramId)}</b>\n\n` +
     `<b>ID:</b> ${user.telegramId}\n` +
     `<b>Twoj Balans:</b> ${parseFloat(user.balance).toFixed(2)} PLN\n` +
     `<b>Rabat:</b> ${parseFloat(user.discountPercent).toFixed(1)}%\n` +
     `<b>Bonusy:</b> ${parseFloat(user.bonuses).toFixed(0)}\n` +
     `<b>Zakupy:</b> ${user.purchaseCount}`;
 
-  const keyboard = mainMenuKeyboard();
+  const keyboard = mainMenuKeyboard(await isTelegramAdmin(user.telegramId));
 
   if (messageId) {
     await editMessageText(token, {
@@ -143,21 +148,42 @@ export async function handleUpdate(update: Record<string, unknown>) {
     const firstName = message.from?.first_name;
     const text = message.text ?? "";
 
-    if (text.startsWith("/start")) {
+    if (/^\/start(?:@\w+)?(?:\s|$)/.test(text)) {
       const parts = text.split(" ");
       const refCode = parts[1] ?? undefined;
       const user = await getOrCreateUser(telegramId, username, firstName, refCode);
-      resetSession(telegramId);
+      await resetSession(telegramId);
       const msgId = await sendOrEditHome(token, chatId, user);
       if (msgId) {
-        setSession(telegramId, { state: "home", lastMessageId: msgId });
+        await setSession(telegramId, { state: "home", lastMessageId: msgId });
       }
       return;
     }
 
     // Handle text input states
-    const session = getSession(telegramId);
+    if (text === "/admin") {
+      if (String(chatId) !== telegramId || !(await isTelegramAdmin(telegramId))) {
+        await sendMessage(token, { chat_id: chatId, text: "Brak uprawnień administratora." }); return;
+      }
+      await sendMessage(token, { chat_id: chatId, text: "Panel administratora", reply_markup: makeInlineKeyboard([
+        [{ text: "Otwórz panel administratora", web_app: { url: siteUrl() + "/?telegram-admin=1" } }],
+      ]) }); return;
+    }
+    const session = await getSession(telegramId);
     const user = await getOrCreateUser(telegramId, username, firstName);
+
+    if (session.state === "topup:amount") {
+      const value = text.trim().replace(",", ".");
+      const amount = Number(value);
+      if (!/^\d+(?:\.\d{1,2})?$/.test(value) || !Number.isFinite(amount) || amount < 20 || amount > 999999.99) {
+        await sendMessage(token, { chat_id: chatId, text: "Wpisz kwotę w złotych (minimum 20 PLN, maksymalnie dwa miejsca po przecinku)." }); return;
+      }
+      await sendMessage(token, { chat_id: chatId,
+        text: `<b>Doładowanie salda — BLIK</b>\n\nKwota: <b>${amount.toFixed(2)} PLN</b>\nNumer BLIK: <code>724 438 691</code>\nComment/Numer Zamówienia: <code>19212906</code>\n\nPo wpłacie skontaktuj się z operatorem. Saldo zostanie uzupełnione po weryfikacji wpłaty.`,
+        parse_mode: "HTML", reply_markup: makeInlineKeyboard([[{ text: "Operator", callback_data: "menu:operator" }], ...navButtons()]),
+      });
+      await resetSession(telegramId); return;
+    }
 
     if (session.state === "exchange:waiting") {
       const amount = parseInt(text.trim(), 10);
@@ -183,7 +209,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
         return;
       }
 
-      resetSession(telegramId);
+      await resetSession(telegramId);
       await sendMessage(token, {
         chat_id: chatId,
         text: `Wymieniono <b>${amount}</b> bonusow na <b>${pln.toFixed(2)} PLN</b>.\nNowe saldo zostalo zaktualizowane.`,
@@ -197,10 +223,10 @@ export async function handleUpdate(update: Record<string, unknown>) {
       const pln = await redeemCouponForUser(telegramId, code);
       if (pln === null) {
         await sendMessage(token, { chat_id: chatId, text: "Kupon jest nieprawidlowy lub wyczerpany." });
-        resetSession(telegramId);
+        await resetSession(telegramId);
         return;
       }
-      resetSession(telegramId);
+      await resetSession(telegramId);
       await sendMessage(token, {
         chat_id: chatId,
         text: `Kupon aktywowany! Dodano <b>${pln.toFixed(2)} PLN</b> do Twojego salda.`,
@@ -227,7 +253,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
     const messageId = cb.message?.message_id;
     const data = cb.data ?? "";
 
-    await answerCallbackQuery(token, callbackId);
+    await answerCallbackQuery(token, callbackId).catch(() => undefined);
 
     const user = await getOrCreateUser(
       telegramId,
@@ -235,13 +261,25 @@ export async function handleUpdate(update: Record<string, unknown>) {
       cb.from.first_name
     );
 
-    const session = getSession(telegramId);
+    const session = await getSession(telegramId);
+
+    if (data.startsWith("admin:")) {
+      if (String(chatId) !== telegramId || !(await isTelegramAdmin(telegramId))) {
+        await sendMessage(token, { chat_id: chatId, text: "Brak uprawnień administratora." }); return;
+      }
+      await editMessageText(token, { chat_id: chatId, message_id: messageId!, text: "⚙️ Panel administratora\nZarządzaj sklepem bezpośrednio w Telegramie.",
+        reply_markup: makeInlineKeyboard([
+          ...[["Dashboard", "/"], ["Asortyment i kategorie", "/assortment"], ["Zamówienia", "/orders"], ["Użytkownicy i saldo", "/users"], ["Kupony i wiadomości", "/tools"], ["Ustawienia", "/settings"]].map(([text, path]) => [{ text, web_app: { url: siteUrl() + path + "?telegram-admin=1" } }]),
+          ...navButtons(),
+        ]),
+      }); return;
+    }
 
     // Navigation: home
     if (data === "nav:home") {
-      resetSession(telegramId);
+      await resetSession(telegramId);
       await sendOrEditHome(token, chatId, user, messageId);
-      setSession(telegramId, { state: "home", lastMessageId: messageId });
+      await setSession(telegramId, { state: "home", lastMessageId: messageId });
       return;
     }
 
@@ -249,13 +287,13 @@ export async function handleUpdate(update: Record<string, unknown>) {
     if (data === "nav:back") {
       if (session.state === "buy:product") {
         // Go back to city selection
-        setSession(telegramId, { state: "home", lastMessageId: messageId });
+        await setSession(telegramId, { state: "home", lastMessageId: messageId });
         await handleBuyStart(token, chatId, messageId);
         return;
       }
       if (session.state === "buy:district") {
         // Go back to product selection
-        setSession(telegramId, {
+        await setSession(telegramId, {
           state: "buy:city",
           selectedCityId: session.selectedCityId,
           selectedCityName: session.selectedCityName,
@@ -272,7 +310,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
       }
       if (session.state === "buy:payment") {
         // Go back to district selection
-        setSession(telegramId, {
+        await setSession(telegramId, {
           state: "buy:product",
           selectedCityId: session.selectedCityId,
           selectedCityName: session.selectedCityName,
@@ -294,16 +332,17 @@ export async function handleUpdate(update: Record<string, unknown>) {
         return;
       }
       // Default: home
-      resetSession(telegramId);
+      await resetSession(telegramId);
       await sendOrEditHome(token, chatId, user, messageId);
       return;
     }
 
     // Main menu handlers
     if (data === "menu:account") {
+      await resetSession(telegramId);
       const accountText =
         `<b>Konto osobiste</b>\n\n` +
-        `Profil: ${user.firstName ?? user.telegramId}\n` +
+        `Profil: ${html(user.firstName ?? user.telegramId)}\n` +
         `ID: <code>${user.telegramId}</code>\n` +
         `Saldo: <b>${parseFloat(user.balance).toFixed(2)} PLN</b>\n` +
         `Rabat: ${parseFloat(user.discountPercent).toFixed(1)}%\n` +
@@ -330,7 +369,8 @@ export async function handleUpdate(update: Record<string, unknown>) {
 
     if (data === "account:referrals") {
       const settings = await getSettings();
-      const botUsername = "GuaKamole_Shop_bot";
+      const me = await telegramApi(token, "getMe", {}) as { result?: { username?: string } };
+      const botUsername = me.result?.username ?? "leviafan5zzz_bot";
       const refLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
       const referrals = await db
         .select()
@@ -379,8 +419,8 @@ export async function handleUpdate(update: Record<string, unknown>) {
         const date = new Date(p.createdAt).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit" });
         const statusIcon = p.status === "fulfilled" ? "✅" : "⏳";
         historyText += `${statusIcon} <b>#${p.id}</b> ${date}\n`;
-        historyText += `   ${p.productName} — ${parseFloat(p.amountPln).toFixed(2)} PLN\n`;
-        historyText += `   ${p.cityName} / ${p.districtName}\n`;
+        historyText += `   ${html(p.productName ?? "")} — ${parseFloat(p.amountPln).toFixed(2)} PLN\n`;
+        historyText += `   ${html(p.cityName ?? "")} / ${html(p.districtName ?? "")}\n`;
         if (p.status === "fulfilled" && p.fulfillmentGps) {
           try {
             const { lat, lng } = JSON.parse(p.fulfillmentGps) as { lat: number; lng: number };
@@ -406,7 +446,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
       const settings = await getSettings();
       const rate = settings?.bonusExchangeRate ?? 10;
       const currentBonuses = Math.floor(parseFloat(user.bonuses));
-      setSession(telegramId, { state: "exchange:waiting", lastMessageId: messageId });
+      await setSession(telegramId, { state: "exchange:waiting", lastMessageId: messageId });
       await editMessageText(token, {
         chat_id: chatId,
         message_id: messageId!,
@@ -424,7 +464,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
     }
 
     if (data === "account:coupon") {
-      setSession(telegramId, { state: "coupon:waiting", lastMessageId: messageId });
+      await setSession(telegramId, { state: "coupon:waiting", lastMessageId: messageId });
       await editMessageText(token, {
         chat_id: chatId,
         message_id: messageId!,
@@ -465,14 +505,14 @@ export async function handleUpdate(update: Record<string, unknown>) {
       if (pending.length > 0) {
         resText += `<b>Oczekujace (${pending.length}):</b>\n`;
         for (const r of pending) {
-          resText += `⏳ #${r.id} — ${r.productName} (${r.districtName})\n`;
+          resText += `⏳ #${r.id} — ${html(r.productName ?? "")} (${html(r.districtName ?? "")})\n`;
         }
         resText += "\n";
       }
       if (fulfilled.length > 0) {
         resText += `<b>Zrealizowane (${fulfilled.length}):</b>\n`;
         for (const r of fulfilled.slice(-5)) {
-          resText += `✅ #${r.id} — ${r.productName}\n`;
+          resText += `✅ #${r.id} — ${html(r.productName ?? "")}\n`;
         }
       }
 
@@ -489,6 +529,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
     }
 
     if (data === "menu:topup") {
+      await resetSession(telegramId);
       const text =
         `<b>Doladuj swoje saldo</b>\n\n` +
         `Wybierz metode platnosci:\n` +
@@ -502,7 +543,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
         text,
         parse_mode: "HTML",
         reply_markup: makeInlineKeyboard([
-          [{ text: "Uzupelnij odblaskiem (BLIK)", callback_data: "topup:blik" }],
+          [{ text: "Uzupełnij odblaskiem (BLIK)", callback_data: "topup:blik" }],
           [{ text: "Doladuj kryptowalutami", callback_data: "topup:crypto" }],
           ...navButtons(),
         ]),
@@ -510,12 +551,19 @@ export async function handleUpdate(update: Record<string, unknown>) {
       return;
     }
 
-    if (data === "topup:blik" || data === "topup:crypto") {
+    if (data === "topup:blik") {
+      await setSession(telegramId, { state: "topup:amount", lastMessageId: messageId });
+      await editMessageText(token, { chat_id: chatId, message_id: messageId!,
+        text: "Uzupełnij odblaskiem (BLIK)\n\nWpisz kwotę do wpłaty w złotych. Minimalna kwota do wpłaty to 20 PLN.",
+        reply_markup: makeInlineKeyboard([[{ text: "Anuluj", callback_data: "menu:topup" }], ...navButtons()]),
+      }); return;
+    }
+    if (data === "topup:crypto") {
       const settings = await getSettings();
       const operator = settings?.operatorUsername
         ? `@${settings.operatorUsername}`
         : "@Operator";
-      const method = data === "topup:blik" ? "BLIK (odblaskiem)" : "kryptowaluty";
+      const method = "kryptowaluty";
       await editMessageText(token, {
         chat_id: chatId,
         message_id: messageId!,
@@ -569,7 +617,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
 
     // Buy flow
     if (data === "menu:buy") {
-      setSession(telegramId, { state: "buy:city", lastMessageId: messageId });
+      await setSession(telegramId, { state: "buy:city", lastMessageId: messageId });
       await handleBuyStart(token, chatId, messageId);
       return;
     }
@@ -581,8 +629,8 @@ export async function handleUpdate(update: Record<string, unknown>) {
         .from(citiesTable)
         .where(eq(citiesTable.id, cityId));
       const city = cities[0];
-      if (!city) return;
-      setSession(telegramId, {
+      if (!city || !city.isActive) { await handleBuyStart(token, chatId, messageId); return; }
+      await setSession(telegramId, {
         state: "buy:product",
         selectedCityId: city.id,
         selectedCityName: city.name,
@@ -599,8 +647,12 @@ export async function handleUpdate(update: Record<string, unknown>) {
         .from(productsTable)
         .where(eq(productsTable.id, productId));
       const product = products[0];
-      if (!product) return;
-      setSession(telegramId, {
+      if (!product || !product.isActive) { await handleBuyStart(token, chatId, messageId); return; }
+      const [productCity] = await db.select().from(citiesTable).where(and(eq(citiesTable.id, product.cityId), eq(citiesTable.isActive, true)));
+      if (!productCity) { await handleBuyStart(token, chatId, messageId); return; }
+      session.selectedCityId = productCity.id;
+      session.selectedCityName = productCity.name;
+      await setSession(telegramId, {
         state: "buy:district",
         selectedCityId: session.selectedCityId,
         selectedCityName: session.selectedCityName,
@@ -629,8 +681,10 @@ export async function handleUpdate(update: Record<string, unknown>) {
         .from(districtsTable)
         .where(eq(districtsTable.id, districtId));
       const district = districts[0];
-      if (!district) return;
-      setSession(telegramId, {
+      if (!district || !district.isActive || district.cityId !== session.selectedCityId || !session.selectedProductId) {
+        await handleBuyStart(token, chatId, messageId); return;
+      }
+      await setSession(telegramId, {
         state: "buy:payment",
         selectedCityId: session.selectedCityId,
         selectedCityName: session.selectedCityName,
@@ -645,9 +699,9 @@ export async function handleUpdate(update: Record<string, unknown>) {
         chat_id: chatId,
         message_id: messageId!,
         text:
-          `Wybrales miasto: <b>${session.selectedCityName}</b>\n` +
-          `Produkt: <b>${session.selectedProductName}</b>\n` +
-          `Dzielnica: <b>${district.name}</b>\n\n` +
+          `Wybrales miasto: <b>${html(session.selectedCityName ?? "")}</b>\n` +
+          `Produkt: <b>${html(session.selectedProductName ?? "")}</b>\n` +
+          `Dzielnica: <b>${html(district.name ?? "")}</b>\n\n` +
           `Wybierz metode platnosci:\n\n` +
           `Zewnetrzne platnosci sa obecnie niedostepne. Mozesz uzyc srodkow na saldzie konta.`,
         parse_mode: "HTML",
@@ -671,6 +725,9 @@ export async function handleUpdate(update: Record<string, unknown>) {
     }
 
     if (data === "pay:balance") {
+      if (session.state !== "buy:payment" || !session.selectedCityId || !session.selectedProductId || !session.selectedDistrictId) {
+        await handleBuyStart(token, chatId, messageId); return;
+      }
       const [product] = await db
         .select()
         .from(productsTable)
@@ -700,12 +757,17 @@ export async function handleUpdate(update: Record<string, unknown>) {
           parse_mode: "HTML",
           reply_markup: makeInlineKeyboard(navButtons()),
         });
-        resetSession(telegramId);
+        await resetSession(telegramId);
         return;
       }
 
+      const settingsForPurchase = await getSettings();
+      if (Number(product.pricePln) < (settingsForPurchase?.minPurchaseAmount ?? 0)) {
+        await editMessageText(token, { chat_id: chatId, message_id: messageId!, text: `Minimalna kwota zakupu to ${settingsForPurchase!.minPurchaseAmount} PLN. Wybierz inny produkt.`, reply_markup: makeInlineKeyboard(navButtons()) }); return;
+      }
       const price = parseFloat(product.pricePln);
       const paymentResult = await createBalanceOrder({
+        requestKey: `telegram:${callbackId}`,
         telegramId,
         cityId: session.selectedCityId!,
         cityName: session.selectedCityName!,
@@ -742,9 +804,9 @@ export async function handleUpdate(update: Record<string, unknown>) {
         message_id: messageId!,
         text:
           `Zamowienie zlecone!\n\n` +
-          `Miasto: <b>${session.selectedCityName}</b>\n` +
-          `Produkt: <b>${product.name}</b>\n` +
-          `Dzielnica: <b>${district.name}</b>\n` +
+          `Miasto: <b>${html(session.selectedCityName ?? "")}</b>\n` +
+          `Produkt: <b>${html(product.name ?? "")}</b>\n` +
+          `Dzielnica: <b>${html(district.name ?? "")}</b>\n` +
           `Platnosc: <b>Saldo konta</b>\n` +
           `Kwota: <b>${price.toFixed(2)} PLN</b>\n` +
           `Pozostale saldo: <b>${newBalance.toFixed(2)} PLN</b>\n\n` +
@@ -761,8 +823,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
         .orderBy(productPhotosTable.createdAt);
 
       if (photos.length > 0) {
-        const domain = (process.env.REPLIT_DOMAINS ?? "").split(",")[0]?.trim();
-        const baseUrl = domain ? `https://${domain}` : "";
+        const baseUrl = siteUrl();
         for (const photo of photos) {
           const photoUrl = `${baseUrl}/api/storage${photo.objectPath}`;
           await sendPhoto(token, {
@@ -780,9 +841,9 @@ export async function handleUpdate(update: Record<string, unknown>) {
         const adminMsg =
           `NOWE ZAMOWIENIE #${order.id}\n\n` +
           `Uzytkownik: ${user.firstName ?? ""} (@${user.username ?? ""}) [${telegramId}]\n` +
-          `Miasto: ${session.selectedCityName}\n` +
-          `Produkt: ${session.selectedProductName}\n` +
-          `Dzielnica: ${session.selectedDistrictName}\n` +
+          `Miasto: ${html(session.selectedCityName ?? "")}\n` +
+          `Produkt: ${html(session.selectedProductName ?? "")}\n` +
+          `Dzielnica: ${html(session.selectedDistrictName ?? "")}\n` +
           `Platnosc: Saldo konta\n` +
           `Kwota: ${price.toFixed(2)} PLN`;
         await sendMessage(token, {
@@ -791,7 +852,7 @@ export async function handleUpdate(update: Record<string, unknown>) {
         }).catch((e) => logger.warn({ e }, "Failed to notify admin"));
       }
 
-      resetSession(telegramId);
+      await resetSession(telegramId);
       return;
     }
   }
@@ -817,7 +878,7 @@ async function handleBuyStart(
   await editMessageText(token, {
     chat_id: chatId,
     message_id: messageId!,
-    text: "Kupic! Wybierz miasto:",
+    text: cities.length ? "Kupić! Wybierz miasto." : "Brak aktywnych miast. Wróć później lub skontaktuj się z operatorem.",
     parse_mode: "HTML",
     reply_markup: makeInlineKeyboard([...cityButtons, ...navButtons()]),
   });
@@ -835,11 +896,13 @@ async function handleCitySelected(
     .from(productsTable)
     .where(eq(productsTable.cityId, cityId));
 
+  const categories = await db.select().from(categoriesTable);
+  const categoryById = new Map(categories.map(c => [c.id, c]));
   const productButtons = products
-    .filter((p) => p.isActive)
+    .filter((p) => p.isActive && (p.categoryId == null || categoryById.get(p.categoryId)?.isActive))
     .map((p) => [
       {
-        text: `${p.emoji ?? ""} ${p.name} ${p.weightGrams ? p.weightGrams + "g" : ""} - ${parseFloat(p.pricePln).toFixed(0)} PLN`.trim(),
+        text: `${p.emoji ?? ""} ${p.categoryId ? (categoryById.get(p.categoryId)?.name ?? "") + " · " : ""}${p.name} ${p.weightGrams ? p.weightGrams + "g" : ""} - ${parseFloat(p.pricePln).toFixed(0)} PLN`.trim(),
         callback_data: `product:${p.id}`,
       },
     ]);
@@ -847,7 +910,7 @@ async function handleCitySelected(
   await editMessageText(token, {
     chat_id: chatId,
     message_id: messageId!,
-    text: `Wybrales miasto: <b>${cityName}</b>\nWybierz produkt:`,
+    text: `Wybrałeś miasto: <b>${html(cityName)}</b>\n${productButtons.length ? "Wybierz produkt:" : "Brak aktywnych produktów w tym mieście."}`,
     parse_mode: "HTML",
     reply_markup: makeInlineKeyboard([...productButtons, ...navButtons()]),
   });
@@ -880,7 +943,7 @@ async function handleProductSelected(
   await editMessageText(token, {
     chat_id: chatId,
     message_id: messageId!,
-    text: `Wybrales miasto: <b>${cityName}</b>\nProdukt: <b>${productName}</b>\nWybierz dzielnica:`,
+    text: `Wybrałeś miasto: <b>${html(cityName)}</b>\nProdukt: <b>${html(productName)}</b>\n${districtButtons.length ? "Wybierz dzielnicę:" : "Brak dostępnych dzielnic. Skontaktuj się z operatorem."}`,
     parse_mode: "HTML",
     reply_markup: makeInlineKeyboard([...districtButtons, ...navButtons()]),
   });

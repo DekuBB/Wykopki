@@ -3,11 +3,9 @@ import { handleUpdate } from "../lib/botHandler";
 import { logger } from "../lib/logger";
 import { getRequiredSecret, secretsMatch } from "../lib/security";
 
+import { db, telegramUpdatesTable } from "@workspace/db";
+import { eq, and, lt } from "drizzle-orm";
 const router: IRouter = Router();
-const seenUpdates = new Map<number, number>();
-const UPDATE_TTL_MS = 10 * 60 * 1000;
-const MAX_SEEN_UPDATES = 5_000;
-
 router.post("/telegram/webhook", async (req, res): Promise<void> => {
   const webhookSecret = getRequiredSecret("TELEGRAM_WEBHOOK_SECRET");
   if (!webhookSecret) {
@@ -27,28 +25,25 @@ router.post("/telegram/webhook", async (req, res): Promise<void> => {
     return;
   }
 
-  const now = Date.now();
-  for (const [id, seenAt] of seenUpdates) {
-    if (now - seenAt > UPDATE_TTL_MS) seenUpdates.delete(id);
-  }
-
-  if (seenUpdates.has(updateId)) {
-    res.json({ ok: true, duplicate: true });
-    return;
-  }
-
-  seenUpdates.set(updateId, now);
-  if (seenUpdates.size > MAX_SEEN_UPDATES) {
-    const oldestId = seenUpdates.keys().next().value;
-    if (typeof oldestId === "number") seenUpdates.delete(oldestId);
+  const [claim] = await db.insert(telegramUpdatesTable).values({ id: String(updateId) }).onConflictDoUpdate({
+    target: telegramUpdatesTable.id,
+    set: { createdAt: new Date() },
+    where: and(eq(telegramUpdatesTable.completed, false), lt(telegramUpdatesTable.createdAt, new Date(Date.now() - 120000))),
+  }).returning();
+  if (!claim) {
+    const [existing] = await db.select().from(telegramUpdatesTable).where(eq(telegramUpdatesTable.id, String(updateId)));
+    if (existing?.completed) { res.json({ ok: true, duplicate: true }); return; }
+    res.status(503).json({ error: "Update is being processed" }); return;
   }
 
   try {
     await handleUpdate(req.body);
   } catch (err) {
-    seenUpdates.delete(updateId);
-    logger.error({ err }, "Error handling Telegram update");
+    await db.delete(telegramUpdatesTable).where(eq(telegramUpdatesTable.id, String(updateId)));
+    logger.error("Error handling Telegram update");
+    res.status(500).json({ error: "Update failed" }); return;
   }
+  await db.update(telegramUpdatesTable).set({ completed: true }).where(eq(telegramUpdatesTable.id, String(updateId)));
   res.json({ ok: true });
 });
 
