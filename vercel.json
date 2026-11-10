@@ -1,5 +1,5 @@
 {
   "buildCommand": "pnpm build",
-  "outputDirectory": "artifacts/admin-panel/dist/public"
+  "outputDirectory": "artifacts/telegram-mini-app/dist/public"
 }
 
