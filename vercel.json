@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm build",
+  "outputDirectory": "artifacts/admin-panel/dist/public"
+}
+
