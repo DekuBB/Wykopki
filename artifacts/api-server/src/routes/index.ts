@@ -15,9 +15,12 @@ import couponsRouter from "./coupons";
 import broadcastRouter from "./broadcast";
 import telegramMiniAppRouter from "./telegram-mini-app";
 
+import categoriesRouter from "./categories";
+
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(categoriesRouter);
 router.use(storageRouter);
 router.use(healthRouter);
 router.use(usersRouter);

@@ -13,6 +13,7 @@ export const ordersTable = pgTable("orders", {
   districtId: integer("district_id").notNull(),
   districtName: text("district_name").notNull(),
   amountPln: numeric("amount_pln", { precision: 10, scale: 2 }).notNull(),
+  requestKey: text("request_key").unique(),
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").notNull().default("unpaid"),
   paidAt: timestamp("paid_at", { withTimezone: true }),

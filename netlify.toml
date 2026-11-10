@@ -1,0 +1,11 @@
+[build]
+command = "pnpm --filter @workspace/admin-panel... run build"
+publish = "artifacts/admin-panel/dist"
+
+[functions]
+node_bundler = "esbuild"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200

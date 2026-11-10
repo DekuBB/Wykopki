@@ -69,7 +69,7 @@ async function getConfiguredBotToken(): Promise<string | null> {
   return settings?.botToken ?? null;
 }
 
-function validateTelegramInitData(
+export function validateTelegramInitData(
   initData: string,
   botToken: string,
 ): { telegramUser: z.infer<typeof TelegramWebAppUser> } | null {

@@ -14,15 +14,23 @@ import Tools from "@/pages/tools";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<"loading" | "ok" | "unauth">("loading");
+  const [status, setStatus] = useState<"loading" | "ok" | "unauth" | "denied">("loading");
   const [, navigate] = useLocation();
 
   const checkAuth = async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const app = (window as typeof window & { Telegram?: { WebApp?: { initData: string; ready: () => void; expand: () => void } } }).Telegram?.WebApp;
+      const telegramMode = new URLSearchParams(window.location.search).has("telegram-admin") || !!app?.initData;
+      if (telegramMode) {
+        if (!app?.initData) { setStatus("denied"); return; }
+        app.ready(); app.expand();
+        const login = await fetch("/api/auth/telegram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData: app.initData }), signal: AbortSignal.timeout(15000) });
+        setStatus(login.ok ? "ok" : "denied"); return;
+      }
+      const res = await fetch("/api/auth/me", { signal: AbortSignal.timeout(15000) });
       if (res.ok) {
         setStatus("ok");
       } else {
@@ -45,6 +53,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (status === "denied") return <div className="min-h-screen flex items-center justify-center p-6 bg-background text-center"><p role="alert">To konto Telegram nie ma dostępu do panelu administratora. Otwórz panel z konta administratora w prywatnej rozmowie z botem.</p></div>;
   if (status === "unauth") {
     return <Login onLogin={() => setStatus("ok")} />;
   }

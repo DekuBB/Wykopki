@@ -7,6 +7,49 @@
  */
 import * as zod from "zod";
 
+export const ListCategoriesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  emoji: zod.string().nullable(),
+  isActive: zod.boolean(),
+});
+export const ListCategoriesResponse = zod.array(ListCategoriesResponseItem);
+
+export const createCategoryBodyNameMax = 100;
+
+export const createCategoryBodyEmojiMax = 16;
+
+export const CreateCategoryBody = zod.object({
+  name: zod.string().min(1).max(createCategoryBodyNameMax),
+  emoji: zod.string().max(createCategoryBodyEmojiMax).nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateCategoryParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const updateCategoryBodyNameMax = 100;
+
+export const updateCategoryBodyEmojiMax = 16;
+
+export const UpdateCategoryBody = zod.object({
+  name: zod.string().min(1).max(updateCategoryBodyNameMax),
+  emoji: zod.string().max(updateCategoryBodyEmojiMax).nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateCategoryResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  emoji: zod.string().nullable(),
+  isActive: zod.boolean(),
+});
+
+export const DeleteCategoryParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
 /**
  * @summary Health check
  */
@@ -134,13 +177,18 @@ export const DeleteCityParams = zod.object({
 /**
  * @summary List all products
  */
+export const listProductsResponsePricePlnExclusiveMin = 0;
+
+export const listProductsResponseWeightGramsMin = 0;
+
 export const ListProductsResponseItem = zod.object({
   id: zod.number(),
+  categoryId: zod.number().nullish(),
   cityId: zod.number(),
   name: zod.string(),
   emoji: zod.string().nullable(),
-  pricePln: zod.number(),
-  weightGrams: zod.number().nullable(),
+  pricePln: zod.number().gt(listProductsResponsePricePlnExclusiveMin),
+  weightGrams: zod.number().min(listProductsResponseWeightGramsMin).nullable(),
   isActive: zod.boolean(),
   createdAt: zod.string(),
 });
@@ -149,12 +197,17 @@ export const ListProductsResponse = zod.array(ListProductsResponseItem);
 /**
  * @summary Create a product
  */
+export const createProductBodyPricePlnExclusiveMin = 0;
+
+export const createProductBodyWeightGramsMin = 0;
+
 export const CreateProductBody = zod.object({
+  categoryId: zod.number().nullish(),
   cityId: zod.number(),
   name: zod.string(),
   emoji: zod.string().nullish(),
-  pricePln: zod.number(),
-  weightGrams: zod.number().nullish(),
+  pricePln: zod.number().gt(createProductBodyPricePlnExclusiveMin),
+  weightGrams: zod.number().min(createProductBodyWeightGramsMin).nullish(),
   isActive: zod.boolean().optional(),
 });
 
@@ -165,22 +218,32 @@ export const UpdateProductParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const updateProductBodyPricePlnExclusiveMin = 0;
+
+export const updateProductBodyWeightGramsMin = 0;
+
 export const UpdateProductBody = zod.object({
+  categoryId: zod.number().nullish(),
   cityId: zod.number(),
   name: zod.string(),
   emoji: zod.string().nullish(),
-  pricePln: zod.number(),
-  weightGrams: zod.number().nullish(),
+  pricePln: zod.number().gt(updateProductBodyPricePlnExclusiveMin),
+  weightGrams: zod.number().min(updateProductBodyWeightGramsMin).nullish(),
   isActive: zod.boolean().optional(),
 });
 
+export const updateProductResponsePricePlnExclusiveMin = 0;
+
+export const updateProductResponseWeightGramsMin = 0;
+
 export const UpdateProductResponse = zod.object({
   id: zod.number(),
+  categoryId: zod.number().nullish(),
   cityId: zod.number(),
   name: zod.string(),
   emoji: zod.string().nullable(),
-  pricePln: zod.number(),
-  weightGrams: zod.number().nullable(),
+  pricePln: zod.number().gt(updateProductResponsePricePlnExclusiveMin),
+  weightGrams: zod.number().min(updateProductResponseWeightGramsMin).nullable(),
   isActive: zod.boolean(),
   createdAt: zod.string(),
 });
@@ -291,6 +354,9 @@ export const GetOrderResponse = zod.object({
 /**
  * @summary Get bot settings
  */
+
+export const getSettingsResponseMinPurchaseAmountMin = 0;
+
 export const GetSettingsResponse = zod.object({
   id: zod.number(),
   botToken: zod.string().nullable(),
@@ -298,6 +364,12 @@ export const GetSettingsResponse = zod.object({
   welcomeMessage: zod.string().nullable(),
   operatorUsername: zod.string().nullable(),
   rulesText: zod.string().nullable(),
+  orderConfirmationMessage: zod.string().nullish(),
+  bonusExchangeRate: zod.number().min(1).optional(),
+  minPurchaseAmount: zod
+    .number()
+    .min(getSettingsResponseMinPurchaseAmountMin)
+    .optional(),
   webhookUrl: zod.string().nullable(),
   updatedAt: zod.string(),
 });
@@ -305,14 +377,25 @@ export const GetSettingsResponse = zod.object({
 /**
  * @summary Update bot settings
  */
+
+export const updateSettingsBodyMinPurchaseAmountMin = 0;
+
 export const UpdateSettingsBody = zod.object({
   botToken: zod.string().nullish(),
   adminTelegramId: zod.string().nullish(),
   welcomeMessage: zod.string().nullish(),
   operatorUsername: zod.string().nullish(),
   rulesText: zod.string().nullish(),
+  orderConfirmationMessage: zod.string().nullish(),
+  bonusExchangeRate: zod.number().min(1).optional(),
+  minPurchaseAmount: zod
+    .number()
+    .min(updateSettingsBodyMinPurchaseAmountMin)
+    .optional(),
   webhookUrl: zod.string().nullish(),
 });
+
+export const updateSettingsResponseMinPurchaseAmountMin = 0;
 
 export const UpdateSettingsResponse = zod.object({
   id: zod.number(),
@@ -321,6 +404,12 @@ export const UpdateSettingsResponse = zod.object({
   welcomeMessage: zod.string().nullable(),
   operatorUsername: zod.string().nullable(),
   rulesText: zod.string().nullable(),
+  orderConfirmationMessage: zod.string().nullish(),
+  bonusExchangeRate: zod.number().min(1).optional(),
+  minPurchaseAmount: zod
+    .number()
+    .min(updateSettingsResponseMinPurchaseAmountMin)
+    .optional(),
   webhookUrl: zod.string().nullable(),
   updatedAt: zod.string(),
 });
@@ -398,6 +487,10 @@ export const CreateTelegramMiniAppSessionResponse = zod.object({
 /**
  * @summary List active cities, products, and districts for the Mini App
  */
+export const getTelegramMiniAppCatalogResponseProductsItemPricePlnExclusiveMin = 0;
+
+export const getTelegramMiniAppCatalogResponseProductsItemWeightGramsMin = 0;
+
 export const GetTelegramMiniAppCatalogResponse = zod.object({
   cities: zod.array(
     zod.object({
@@ -412,11 +505,17 @@ export const GetTelegramMiniAppCatalogResponse = zod.object({
   products: zod.array(
     zod.object({
       id: zod.number(),
+      categoryId: zod.number().nullish(),
       cityId: zod.number(),
       name: zod.string(),
       emoji: zod.string().nullable(),
-      pricePln: zod.number(),
-      weightGrams: zod.number().nullable(),
+      pricePln: zod
+        .number()
+        .gt(getTelegramMiniAppCatalogResponseProductsItemPricePlnExclusiveMin),
+      weightGrams: zod
+        .number()
+        .min(getTelegramMiniAppCatalogResponseProductsItemWeightGramsMin)
+        .nullable(),
       isActive: zod.boolean(),
       createdAt: zod.string(),
     }),

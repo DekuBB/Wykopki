@@ -1,3 +1,4 @@
+import { uploadImage } from "@/lib/upload";
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,17 +63,7 @@ function FulfillDialog({
     if (!file) return;
     setUploading(true);
     try {
-      const res = await fetch(`/api/orders/${order.id}/fulfill-upload-url`);
-      if (!res.ok) throw new Error("Upload URL error");
-      const { uploadUrl, objectPath } = (await res.json()) as { uploadUrl: string; objectPath: string };
-
-      const put = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "image/jpeg" },
-        body: file,
-      });
-      if (!put.ok) throw new Error("Upload failed");
-
+      const objectPath = await uploadImage(file, `/api/orders/${order.id}/fulfill-upload-url`, "GET");
       setPhotoPath(objectPath);
       toast({ title: "Zdjecie przesłane" });
     } catch {

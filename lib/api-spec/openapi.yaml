@@ -30,6 +30,61 @@ tags:
     description: Customer-facing Telegram Mini App
 
 paths:
+  /categories:
+    get:
+      operationId: listCategories
+      responses:
+        "200":
+          description: Product categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+  /categories/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    put:
+      operationId: updateCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      responses:
+        "204":
+          description: Category removed, products retained
   /healthz:
     get:
       operationId: healthCheck
@@ -558,6 +613,31 @@ paths:
 
 components:
   schemas:
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+      required: [id, name, emoji, isActive]
+    CategoryInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        emoji:
+          type: ["string", "null"]
+          maxLength: 16
+        isActive:
+          type: boolean
+      required: [name]
     HealthStatus:
       type: object
       properties:
@@ -662,6 +742,8 @@ components:
       properties:
         id:
           type: integer
+        categoryId:
+          type: ["integer", "null"]
         cityId:
           type: integer
         name:
@@ -670,8 +752,10 @@ components:
           type: ["string", "null"]
         pricePln:
           type: number
+          exclusiveMinimum: 0
         weightGrams:
           type: ["number", "null"]
+          minimum: 0
         isActive:
           type: boolean
         createdAt:
@@ -689,6 +773,8 @@ components:
     CreateProductBody:
       type: object
       properties:
+        categoryId:
+          type: ["integer", "null"]
         cityId:
           type: integer
         name:
@@ -697,8 +783,10 @@ components:
           type: ["string", "null"]
         pricePln:
           type: number
+          exclusiveMinimum: 0
         weightGrams:
           type: ["number", "null"]
+          minimum: 0
         isActive:
           type: boolean
       required:
@@ -804,6 +892,14 @@ components:
           type: ["string", "null"]
         rulesText:
           type: ["string", "null"]
+        orderConfirmationMessage:
+          type: ["string", "null"]
+        bonusExchangeRate:
+          type: integer
+          minimum: 1
+        minPurchaseAmount:
+          type: integer
+          minimum: 0
         webhookUrl:
           type: ["string", "null"]
         updatedAt:
@@ -831,6 +927,14 @@ components:
           type: ["string", "null"]
         rulesText:
           type: ["string", "null"]
+        orderConfirmationMessage:
+          type: ["string", "null"]
+        bonusExchangeRate:
+          type: integer
+          minimum: 1
+        minPurchaseAmount:
+          type: integer
+          minimum: 0
         webhookUrl:
           type: ["string", "null"]
 

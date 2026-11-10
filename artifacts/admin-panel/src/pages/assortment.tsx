@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   useListCities, useCreateCity, useUpdateCity, useDeleteCity, getListCitiesQueryKey,
   useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, getListProductsQueryKey,
@@ -19,10 +19,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Edit2, Loader2, Upload, Image, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { uploadImage } from "@/lib/upload";
+import { Categories, type Category } from "@/components/categories";
 import { formatCurrency } from "@/lib/format";
 
 type City = { id: number; name: string; emoji: string | null; isActive: boolean };
-type Product = { id: number; cityId: number; name: string; emoji: string | null; pricePln: number; weightGrams: number | null; isActive: boolean };
+type Product = { id: number; cityId: number; categoryId?: number | null; name: string; emoji: string | null; pricePln: number; weightGrams: number | null; isActive: boolean };
 type District = { id: number; cityId: number; name: string; isActive: boolean };
 type ProductPhoto = { id: number; productId: number; objectPath: string; caption: string | null; servingUrl: string; createdAt: string };
 
@@ -41,6 +43,7 @@ function PhotoManager({ productId }: { productId: number }) {
     setLoadingPhotos(true);
     try {
       const res = await fetch(`/api/product-photos/${productId}`);
+      if (!res.ok) throw new Error();
       const data = await res.json() as ProductPhoto[];
       setPhotos(data);
       setLoaded(true);
@@ -52,38 +55,25 @@ function PhotoManager({ productId }: { productId: number }) {
   };
 
   // Auto-load when mounted
-  useState(() => { void loadPhotos(); });
+  useEffect(() => { void loadPhotos(); }, [productId]);
 
   const handleUpload = async (file: File) => {
     setUploading(true);
     try {
-      // Step 1: get presigned URL
-      const urlRes = await fetch("/api/product-photos/upload-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-      });
-      const { uploadURL, objectPath } = await urlRes.json() as { uploadURL: string; objectPath: string };
-
-      // Step 2: upload directly to GCS
-      await fetch(uploadURL, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
+      const objectPath = await uploadImage(file, "/api/product-photos/upload-url");
       // Step 3: register in DB
       const photoRes = await fetch("/api/product-photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId, objectPath, caption: caption || undefined }),
       });
+      if (!photoRes.ok) throw new Error("Nie udało się zapisać zdjęcia.");
       const newPhoto = await photoRes.json() as ProductPhoto;
       setPhotos(prev => [...prev, newPhoto]);
       setCaption("");
       toast({ title: "Zdjecie dodane" });
-    } catch {
-      toast({ title: "Blad przesylania zdjecia", variant: "destructive" });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : "Błąd przesyłania zdjęcia", variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -92,7 +82,8 @@ function PhotoManager({ productId }: { productId: number }) {
 
   const handleDelete = async (photoId: number) => {
     try {
-      await fetch(`/api/product-photos/${photoId}`, { method: "DELETE" });
+      const response = await fetch(`/api/product-photos/${photoId}`, { method: "DELETE" });
+      if (!response.ok) throw new Error();
       setPhotos(prev => prev.filter(p => p.id !== photoId));
       toast({ title: "Zdjecie usuniete" });
     } catch {
@@ -128,7 +119,7 @@ function PhotoManager({ productId }: { productId: number }) {
               )}
               <button
                 onClick={() => void handleDelete(photo.id)}
-                className="absolute top-1 right-1 h-5 w-5 rounded-sm bg-destructive/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                aria-label="Usuń zdjęcie" type="button" className="absolute top-1 right-1 h-11 w-11 rounded-sm bg-destructive/80 text-white flex items-center justify-center"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -153,7 +144,7 @@ function PhotoManager({ productId }: { productId: number }) {
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }}
         />
@@ -204,8 +195,8 @@ function CityDialog({ open, onClose, city }: { open: boolean; onClose: () => voi
       toast({ title: isEditing ? "Miasto zaktualizowane" : "Miasto dodane" });
       reset();
       onClose();
-    } catch {
-      toast({ title: "Blad zapisu", variant: "destructive" });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : "Błąd zapisu", variant: "destructive" });
     }
     return;
   };
@@ -254,6 +245,8 @@ function ProductDialog({ open, onClose, product, cities }: { open: boolean; onCl
   const [name, setName] = useState(product?.name ?? "");
   const [emoji, setEmoji] = useState(product?.emoji ?? "");
   const [cityId, setCityId] = useState<string>(product?.cityId ? String(product.cityId) : "");
+  const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"], queryFn: async () => { const res = await fetch("/api/categories"); if (!res.ok) throw new Error(); return res.json(); } });
+  const [categoryId, setCategoryId] = useState(product?.categoryId ? String(product.categoryId) : "none");
   const [price, setPrice] = useState(product?.pricePln ? String(product.pricePln) : "");
   const [weight, setWeight] = useState(product?.weightGrams ? String(product.weightGrams) : "");
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
@@ -266,14 +259,16 @@ function ProductDialog({ open, onClose, product, cities }: { open: boolean; onCl
   const handleSave = async () => {
     if (!name.trim()) return toast({ title: "Nazwa jest wymagana", variant: "destructive" });
     if (!cityId) return toast({ title: "Wybierz miasto", variant: "destructive" });
-    if (!price || isNaN(Number(price))) return toast({ title: "Podaj poprawna cene", variant: "destructive" });
+    if (weight && (!Number.isFinite(Number(weight.replace(",", "."))) || Number(weight.replace(",", ".")) < 0)) return toast({ title: "Podaj prawidłową wagę", variant: "destructive" });
+    if (!price || !Number.isFinite(Number(price.replace(",", "."))) || Number(price.replace(",", ".")) <= 0) return toast({ title: "Podaj poprawna cene", variant: "destructive" });
     try {
       const payload = {
         name: name.trim(),
         emoji: emoji || undefined,
         cityId: Number(cityId),
-        pricePln: Number(price),
-        weightGrams: weight ? Number(weight) : undefined,
+        categoryId: categoryId === "none" ? null : Number(categoryId),
+        pricePln: Number(price.replace(",", ".")),
+        weightGrams: weight ? Number(weight.replace(",", ".")) : null,
         isActive,
       };
       if (isEditing) {
@@ -285,8 +280,8 @@ function ProductDialog({ open, onClose, product, cities }: { open: boolean; onCl
       toast({ title: isEditing ? "Produkt zaktualizowany" : "Produkt dodany" });
       reset();
       onClose();
-    } catch {
-      toast({ title: "Blad zapisu", variant: "destructive" });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : "Błąd zapisu", variant: "destructive" });
     }
     return;
   };
@@ -322,6 +317,7 @@ function ProductDialog({ open, onClose, product, cities }: { open: boolean; onCl
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1.5"><Label>Kategoria</Label><Select value={categoryId} onValueChange={setCategoryId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Bez kategorii</SelectItem>{categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.emoji} {c.name}{!c.isActive ? " (nieaktywna)" : ""}</SelectItem>)}</SelectContent></Select></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Cena (PLN)</Label>
@@ -380,8 +376,8 @@ function DistrictDialog({ open, onClose, district, cities }: { open: boolean; on
       toast({ title: isEditing ? "Dzielnica zaktualizowana" : "Dzielnica dodana" });
       reset();
       onClose();
-    } catch {
-      toast({ title: "Blad zapisu", variant: "destructive" });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : "Błąd zapisu", variant: "destructive" });
     }
     return;
   };
@@ -507,6 +503,7 @@ export default function Assortment() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Asortyment</h1>
+      <Categories />
 
       <Tabs defaultValue="products" className="space-y-4">
         <TabsList className="bg-background border border-border">
@@ -714,9 +711,9 @@ export default function Assortment() {
         </TabsContent>
       </Tabs>
 
-      <CityDialog open={cityDialog.open} city={cityDialog.city} onClose={() => setCityDialog({ open: false })} />
-      <ProductDialog open={productDialog.open} product={productDialog.product} cities={cities as City[]} onClose={() => setProductDialog({ open: false })} />
-      <DistrictDialog open={districtDialog.open} district={districtDialog.district} cities={cities as City[]} onClose={() => setDistrictDialog({ open: false })} />
+      <CityDialog key={`city-${cityDialog.city?.id ?? "new"}-${cityDialog.open}`} open={cityDialog.open} city={cityDialog.city} onClose={() => setCityDialog({ open: false })} />
+      <ProductDialog key={`product-${productDialog.product?.id ?? "new"}-${productDialog.open}`} open={productDialog.open} product={productDialog.product} cities={cities as City[]} onClose={() => setProductDialog({ open: false })} />
+      <DistrictDialog key={`district-${districtDialog.district?.id ?? "new"}-${districtDialog.open}`} open={districtDialog.open} district={districtDialog.district} cities={cities as City[]} onClose={() => setDistrictDialog({ open: false })} />
       <DeleteConfirm open={!!deleteState} label={deleteState?.label ?? ""} onClose={() => setDeleteState(null)} onConfirm={handleDelete} pending={deletePending} />
     </div>
   );

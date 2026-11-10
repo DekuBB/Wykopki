@@ -4,10 +4,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Activity, CreditCard, Users, ShoppingCart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useGetStats({ query: { queryKey: ["/api/stats"] } });
+  const { data: stats, isLoading, isError, refetch } = useGetStats({ query: { queryKey: ["/api/stats"] } });
 
   if (isLoading) {
     return (
@@ -24,7 +25,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!stats) return null;
+  if (isError || !stats) return <div role="alert" className="space-y-4"><h1 className="text-2xl font-bold">Dashboard</h1><p>Nie udało się pobrać statystyk. Sprawdź połączenie i spróbuj ponownie.</p><Button onClick={() => void refetch()}>Spróbuj ponownie</Button></div>;
 
   return (
     <div className="space-y-6">

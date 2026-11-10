@@ -1,9 +1,12 @@
+import { siteUrl } from "../lib/siteUrl";
+import { z } from "zod/v4";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { desc, eq } from "drizzle-orm";
 import { db, ordersTable } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { getBotToken, sendPhoto, sendLocation, sendMessage } from "../lib/telegram";
 
+function escapeHtml(value: string) { return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
 
@@ -73,28 +76,28 @@ router.post("/orders/:id/fulfill", async (req: Request, res: Response): Promise<
     fulfillmentNote?: string;
   };
 
-  await db
-    .update(ordersTable)
-    .set({
-      status: "fulfilled",
-      fulfillmentPhotoPath: fulfillmentPhotoPath ?? null,
-      fulfillmentGps: fulfillmentGps ?? null,
-      fulfillmentNote: fulfillmentNote ?? null,
-      fulfilledAt: new Date(),
-    })
-    .where(eq(ordersTable.id, id));
+  if (fulfillmentGps) {
+    try {
+      z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).parse(JSON.parse(fulfillmentGps));
+    } catch { res.status(400).json({ error: "Podaj prawidłowe współrzędne GPS" }); return; }
+  }
+  if (fulfillmentPhotoPath) {
+    try { await objectStorage.downloadObject(await objectStorage.getObjectEntityFile(fulfillmentPhotoPath)); }
+    catch { res.status(400).json({ error: "Prześlij zdjęcie ponownie" }); return; }
+  }
 
   // Notify customer via Telegram
   try {
     const token = await getBotToken();
-    if (token) {
+    if (!token) { res.status(503).json({ error: "Bot nie jest skonfigurowany" }); return; }
+    {
       const chatId = order.telegramId;
 
       const caption =
         `Twoje zamowienie #${order.id} zostalo zrealizowane!\n\n` +
-        `Produkt: <b>${order.productName}</b>\n` +
-        `Dzielnica: <b>${order.districtName}</b>` +
-        (fulfillmentNote ? `\n\n<i>${fulfillmentNote}</i>` : "");
+        `Produkt: <b>${escapeHtml(order.productName)}</b>\n` +
+        `Dzielnica: <b>${escapeHtml(order.districtName)}</b>` +
+        (fulfillmentNote ? `\n\n<i>${escapeHtml(fulfillmentNote)}</i>` : "");
 
       await sendMessage(token, { chat_id: chatId, text: caption, parse_mode: "HTML" });
 
@@ -106,19 +109,30 @@ router.post("/orders/:id/fulfill", async (req: Request, res: Response): Promise<
       }
 
       if (fulfillmentPhotoPath) {
-        const domain = (process.env.REPLIT_DOMAINS ?? "").split(",")[0]?.trim();
-        const baseUrl = domain ? `https://${domain}` : "";
+        const baseUrl = siteUrl();
         const photoUrl = `${baseUrl}/api/storage${fulfillmentPhotoPath}`;
         await sendPhoto(token, {
           chat_id: chatId,
           photo: photoUrl,
           caption: "Zdjecie skrytki",
-        }).catch((e: unknown) => req.log.warn({ e }, "Failed to send fulfillment photo"));
+        });
       }
     }
   } catch (e) {
-    req.log.warn({ e }, "Failed to send fulfillment to customer");
+    req.log.warn("Failed to send fulfillment to customer");
+    res.status(502).json({ error: "Nie udało się dostarczyć zamówienia do Telegrama. Zamówienie pozostaje oczekujące." }); return;
   }
+
+  await db
+    .update(ordersTable)
+    .set({
+      status: "fulfilled",
+      fulfillmentPhotoPath: fulfillmentPhotoPath ?? null,
+      fulfillmentGps: fulfillmentGps ?? null,
+      fulfillmentNote: fulfillmentNote ?? null,
+      fulfilledAt: new Date(),
+    })
+    .where(eq(ordersTable.id, id));
 
   res.json({ ok: true });
 });

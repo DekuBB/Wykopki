@@ -1,5 +1,5 @@
-// In-memory session storage for bot conversation state
-// Each user's state is keyed by their Telegram ID
+import { db, botSessionsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export interface BotSession {
   state:
@@ -9,6 +9,7 @@ export interface BotSession {
     | "buy:district"
     | "buy:payment"
     | "topup"
+    | "topup:amount"
     | "opinion"
     | "exchange:waiting"
     | "coupon:waiting";
@@ -22,19 +23,16 @@ export interface BotSession {
   lastMessageId?: number;
 }
 
-const sessions = new Map<string, BotSession>();
-
-export function getSession(telegramId: string): BotSession {
-  if (!sessions.has(telegramId)) {
-    sessions.set(telegramId, { state: "home" });
-  }
-  return sessions.get(telegramId)!;
+export async function getSession(telegramId: string): Promise<BotSession> {
+  const [row] = await db.select().from(botSessionsTable).where(eq(botSessionsTable.telegramId, telegramId));
+  if (!row || Date.now() - row.updatedAt.getTime() > 86400000) return { state: "home" };
+  return row.data as BotSession;
 }
-
-export function setSession(telegramId: string, session: BotSession): void {
-  sessions.set(telegramId, session);
+export async function setSession(telegramId: string, session: BotSession): Promise<void> {
+  await db.insert(botSessionsTable).values({ telegramId, data: session }).onConflictDoUpdate({
+    target: botSessionsTable.telegramId, set: { data: session, updatedAt: new Date() },
+  });
 }
-
-export function resetSession(telegramId: string): void {
-  sessions.set(telegramId, { state: "home" });
+export async function resetSession(telegramId: string): Promise<void> {
+  await setSession(telegramId, { state: "home" });
 }
